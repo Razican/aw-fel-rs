@@ -15,3 +15,7 @@ keywords = ["arm", "sunxi", "allwinner", "fel"]
 error-chain = "0.7"
 libusb = "0.3"
 byteorder = "0.5"
+
+[features]
+default = ["uboot"]
+uboot = []
