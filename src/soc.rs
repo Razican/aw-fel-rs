@@ -107,7 +107,7 @@ const A80_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 2] = [SRAMSwapBuffers {
 const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                            soc_id: 0x1623, // Allwinner A10
                                            name: "A10",
-                                           spl_addr: None,
+                                           spl_addr: 0x00000000,
                                            scratch_addr: 0x1000,
                                            thunk_addr: 0xA200,
                                            thunk_size: 0x200,
@@ -120,7 +120,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1625, // Allwinner A10s, A13, R8
                                            name: "A10s/A13/R8",
-                                           spl_addr: None,
+                                           spl_addr: 0x00000000,
                                            scratch_addr: 0x1000,
                                            thunk_addr: 0xA200,
                                            thunk_size: 0x200,
@@ -133,7 +133,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1651, // Allwinner A20
                                            name: "A20",
-                                           spl_addr: None,
+                                           spl_addr: 0x00000000,
                                            scratch_addr: 0x1000,
                                            thunk_addr: 0xA200,
                                            thunk_size: 0x200,
@@ -146,7 +146,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1650, // Allwinner A23
                                            name: "A23",
-                                           spl_addr: None,
+                                           spl_addr: 0x00000000,
                                            scratch_addr: 0x1000,
                                            thunk_addr: 0x46E00,
                                            thunk_size: 0x200,
@@ -159,7 +159,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1633, // Allwinner A31
                                            name: "A31",
-                                           spl_addr: None,
+                                           spl_addr: 0x00000000,
                                            scratch_addr: 0x1000,
                                            thunk_addr: 0x22E00,
                                            thunk_size: 0x200,
@@ -172,7 +172,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1667, // Allwinner A33, R16
                                            name: "A33/R16",
-                                           spl_addr: None,
+                                           spl_addr: 0x00000000,
                                            scratch_addr: 0x1000,
                                            thunk_addr: 0x46E00,
                                            thunk_size: 0x200,
@@ -185,7 +185,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1689, // Allwinner A64
                                            name: "A64",
-                                           spl_addr: Some(0x10000),
+                                           spl_addr: 0x10000,
                                            scratch_addr: 0x11000,
                                            thunk_addr: 0x1A200,
                                            thunk_size: 0x200,
@@ -198,7 +198,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1639, // Allwinner A80
                                            name: "A80",
-                                           spl_addr: Some(0x10000),
+                                           spl_addr: 0x10000,
                                            scratch_addr: 0x11000,
                                            thunk_addr: 0x23400,
                                            thunk_size: 0x200,
@@ -211,7 +211,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1673, // Allwinner A83T
                                            name: "A83T",
-                                           spl_addr: None,
+                                           spl_addr: 0x00000000,
                                            scratch_addr: 0x1000,
                                            thunk_addr: 0x46E00,
                                            thunk_size: 0x200,
@@ -224,7 +224,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1680, // Allwinner H3, H2+
                                            name: "H3/H2+",
-                                           spl_addr: None,
+                                           spl_addr: 0x00000000,
                                            scratch_addr: 0x1000,
                                            thunk_addr: 0xA200,
                                            thunk_size: 0x200,
@@ -237,7 +237,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1718, // Allwinner H5
                                            name: "H5",
-                                           spl_addr: Some(0x10000),
+                                           spl_addr: 0x10000,
                                            scratch_addr: 0x11000,
                                            thunk_addr: 0x1A200,
                                            thunk_size: 0x200,
@@ -250,7 +250,7 @@ const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
                                        SocInfo {
                                            soc_id: 0x1701, // Allwinner R40
                                            name: "R40",
-                                           spl_addr: None,
+                                           spl_addr: 0x00000000,
                                            scratch_addr: 0x1000,
                                            thunk_addr: 0xA200,
                                            thunk_size: 0x200,
@@ -281,6 +281,7 @@ pub struct SocVersion {
 
 impl SocVersion {
     /// Generates a SoC version information structure from the bytes response.
+    #[doc(hidden)]
     pub fn from_bytes(bytes: [u8; 32]) -> SocVersion {
         use byteorder::{LittleEndian, ByteOrder};
 
@@ -317,7 +318,7 @@ impl fmt::Debug for SocVersion {
     }
 }
 
-/// Gets the SoC name from the given ID, if supported.
+/// Gets the *SoC* name from the given ID, if supported.
 fn get_soc_name_from_id(soc_id: u32) -> Option<&'static str> {
     for soc_info in &SOC_INFO_TABLE {
         if soc_info.soc_id == soc_id {
@@ -333,13 +334,30 @@ fn get_soc_name_from_id(soc_id: u32) -> Option<&'static str> {
 /// in *SRAM*, the content of which needs to be exchanged before calling the U-Boot *SPL* code and
 /// then exchanged again before returning control back to the *FEL* code from the *BROM*.
 #[derive(PartialEq)]
-struct SRAMSwapBuffers {
+pub struct SRAMSwapBuffers {
     /// BROM buffer.
     buf1: u32,
     /// Backup storage location.
     buf2: u32,
     /// Buffer size.
     size: u32,
+}
+
+impl SRAMSwapBuffers {
+    /// Gets the BROM buffer.
+    pub fn get_buf1(&self) -> u32 {
+        self.buf1
+    }
+
+    /// Gets the backup storage location.
+    pub fn get_buf2(&self) -> u32 {
+        self.buf2
+    }
+
+    /// Gets the buffer size.
+    pub fn get_size(&self) -> u32 {
+        self.size
+    }
 }
 
 impl fmt::Debug for SRAMSwapBuffers {
@@ -378,7 +396,7 @@ pub struct SocInfo {
     /// Human-readable SoC name string.
     name: &'static str,
     /// SPL load address.
-    spl_addr: Option<u32>,
+    spl_addr: u32,
     /// A safe place to upload & run code.
     scratch_addr: u32,
     /// Address of the thunk code.
@@ -409,6 +427,7 @@ impl SocInfo {
     }
 
     /// Gets the SoC information structure from the givern `SoCVersion`, if supported.
+    #[doc(hidden)]
     pub fn from_version(version: &SocVersion) -> Option<SocInfo> {
         SocInfo::from_id(version.soc_id)
     }
@@ -423,36 +442,71 @@ impl SocInfo {
         self.name
     }
 
+    /// Gets the SPL load address for the SoC.
+    #[doc(hidden)]
+    pub fn get_spl_addr(&self) -> u32 {
+        self.spl_addr
+    }
+
     /// Gets the scratch address.
+    #[doc(hidden)]
     pub fn get_scratch_addr(&self) -> u32 {
         self.scratch_addr
     }
 
-    /// Gets the SID register address.
+    /// Gets the address of the thunk code.
+    #[doc(hidden)]
+    pub fn get_thunk_addr(&self) -> u32 {
+        self.thunk_addr
+    }
+
+    /// Gets the size of the thunk code.
+    #[doc(hidden)]
+    pub fn get_thunk_size(&self) -> u32 {
+        self.thunk_size
+    }
+
+    // Does the SoC need L2 cache?
+    #[doc(hidden)]
+    pub fn needs_l2en(&self) -> bool {
+        self.needs_l2en
+    }
+
+    /// Gets the *MMU* translation table address.
+    #[doc(hidden)]
+    pub fn get_mmu_tt_addr(&self) -> Option<u32> {
+        self.mmu_tt_addr
+    }
+
+    /// Gets the `SID` register address.
+    #[doc(hidden)]
     pub fn get_sid_addr(&self) -> Option<u32> {
         self.sid_addr
     }
 
-    /// Get the RVBAR register address, if supported.
+    /// Get the `RVBAR` register address, if supported.
+    #[doc(hidden)]
     pub fn get_rvbar_reg(&self) -> Option<u32> {
         self.rvbar_reg
+    }
+
+    /// Gets the SoC swap buffers.
+    #[doc(hidden)]
+    pub fn get_swap_buffers(&self) -> &[SRAMSwapBuffers] {
+        self.swap_buffers
     }
 }
 
 impl fmt::Debug for SocInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f,
-               "{{ SoC ID: {:#010x}, name: {}, SPL load address: {}, scratch address: {:#010x}, \
-                thunk address: {:#010x}, thunk size: {:#010x}, L2EN bit: {}, MMU translation \
-                table address: {}, SID registers address: {}, MMIO address of `RVBARADDR0_L` \
-                register: {}, SRAM swap buffers: {:?} }}",
+               "{{ SoC ID: {:#010x}, name: {}, SPL load address: {:#010x}, scratch address: \
+                {:#010x}, thunk address: {:#010x}, thunk size: {:#010x}, L2EN bit: {}, MMU \
+                translation table address: {}, SID registers address: {}, MMIO address of \
+                `RVBARADDR0_L` register: {}, SRAM swap buffers: {:?} }}",
                self.soc_id,
                self.name,
-               if let Some(spl_addr) = self.spl_addr {
-                   format!("{:#010x}", spl_addr)
-               } else {
-                   "None".to_owned()
-               },
+               self.spl_addr,
                self.scratch_addr,
                self.thunk_addr,
                self.thunk_size,
@@ -591,7 +645,7 @@ mod tests {
                 0x1623 => {
                     // Allwinner A10
                     assert_eq!(soc_info.name, "A10");
-                    assert!(soc_info.spl_addr.is_none());
+                    assert_eq!(soc_info.spl_addr, 0x00000000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert!(soc_info.mmu_tt_addr.is_none());
@@ -605,7 +659,7 @@ mod tests {
                 0x1625 => {
                     // Allwinner A10s, A13, R8
                     assert_eq!(soc_info.name, "A10s/A13/R8");
-                    assert!(soc_info.spl_addr.is_none());
+                    assert_eq!(soc_info.spl_addr, 0x00000000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0xA200);
@@ -618,7 +672,7 @@ mod tests {
                 0x1651 => {
                     // Allwinner A20
                     assert_eq!(soc_info.name, "A20");
-                    assert!(soc_info.spl_addr.is_none());
+                    assert_eq!(soc_info.spl_addr, 0x00000000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0xA200);
@@ -631,7 +685,7 @@ mod tests {
                 0x1650 => {
                     // Allwinner A23
                     assert_eq!(soc_info.name, "A23");
-                    assert!(soc_info.spl_addr.is_none());
+                    assert_eq!(soc_info.spl_addr, 0x00000000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x46E00);
@@ -644,7 +698,7 @@ mod tests {
                 0x1633 => {
                     // Allwinner A31
                     assert_eq!(soc_info.name, "A31");
-                    assert!(soc_info.spl_addr.is_none());
+                    assert_eq!(soc_info.spl_addr, 0x00000000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x22E00);
@@ -657,7 +711,7 @@ mod tests {
                 0x1667 => {
                     // Allwinner A33, R16
                     assert_eq!(soc_info.name, "A33/R16");
-                    assert!(soc_info.spl_addr.is_none());
+                    assert_eq!(soc_info.spl_addr, 0x00000000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x46E00);
@@ -670,7 +724,7 @@ mod tests {
                 0x1689 => {
                     // Allwinner A64
                     assert_eq!(soc_info.name, "A64");
-                    assert_eq!(soc_info.spl_addr, Some(0x10000));
+                    assert_eq!(soc_info.spl_addr, 0x10000);
                     assert_eq!(soc_info.scratch_addr, 0x11000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x1A200);
@@ -683,7 +737,7 @@ mod tests {
                 0x1639 => {
                     // Allwinner A80
                     assert_eq!(soc_info.name, "A80");
-                    assert_eq!(soc_info.spl_addr, Some(0x10000));
+                    assert_eq!(soc_info.spl_addr, 0x10000);
                     assert_eq!(soc_info.scratch_addr, 0x11000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x23400);
@@ -696,7 +750,7 @@ mod tests {
                 0x1673 => {
                     // Allwinner A83T
                     assert_eq!(soc_info.name, "A83T");
-                    assert!(soc_info.spl_addr.is_none());
+                    assert_eq!(soc_info.spl_addr, 0x00000000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x46E00);
@@ -709,7 +763,7 @@ mod tests {
                 0x1680 => {
                     // Allwinner H3, H2+
                     assert_eq!(soc_info.name, "H3/H2+");
-                    assert!(soc_info.spl_addr.is_none());
+                    assert_eq!(soc_info.spl_addr, 0x00000000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert_eq!(soc_info.mmu_tt_addr, Some(0x8000));
                     assert_eq!(soc_info.thunk_addr, 0xA200);
@@ -722,7 +776,7 @@ mod tests {
                 0x1718 => {
                     // Allwinner H5
                     assert_eq!(soc_info.name, "H5");
-                    assert_eq!(soc_info.spl_addr, Some(0x10000));
+                    assert_eq!(soc_info.spl_addr, 0x10000);
                     assert_eq!(soc_info.scratch_addr, 0x11000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x1A200);
@@ -735,7 +789,7 @@ mod tests {
                 0x1701 => {
                     // Allwinner R40
                     assert_eq!(soc_info.name, "R40");
-                    assert!(soc_info.spl_addr.is_none());
+                    assert_eq!(soc_info.spl_addr, 0x00000000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0xA200);

@@ -18,12 +18,15 @@ extern crate error_chain;
 extern crate libusb;
 extern crate byteorder;
 
-use std::io;
+use std::io::{self, Read};
 use std::u32;
+use std::thread;
 use std::ops::Deref;
 use std::time::Duration;
 
 use libusb::DeviceHandle;
+
+use byteorder::{LittleEndian, ByteOrder};
 
 /// FEL errors
 #[allow(missing_docs)]
@@ -31,7 +34,7 @@ pub mod error {
     error_chain!{
         errors {
             /// USB response error.
-            Response(expected: String, found: String) {
+            Response(expected: &'static str, found: String) {
                 description("invalid response")
                 display("invalid response: expected '{}', found: {}", expected, found)
             }
@@ -39,6 +42,11 @@ pub mod error {
             UnsupportedDevId(id: u32) {
                 description("unsupported device ID")
                 display("unsupported device ID: {:#010x}", id)
+            }
+            /// SPL header error.
+            SPLHeader(msg: &'static str) {
+                description("SPL header error")
+                display("SPL header error: {}", msg)
             }
         }
         foreign_links {
@@ -49,13 +57,20 @@ pub mod error {
 }
 
 mod soc;
-use soc::*;
+#[cfg(feature = "uboot")]
+mod uboot;
 use error::*;
+use soc::*;
+
+/// Maximum size of *SPL*, at the same time this is the start offset of the main *U-Boot* image
+/// within `u-boot-sunxi-with-spl.bin`.
+#[cfg(feature = "uboot")]
+pub const SPL_LEN_LIMIT: u32 = 0x8000;
 
 /// USB timeout (in seconds).
 const USB_TIMEOUT: u64 = 10;
 /// `AW_USB_MAX_BULK_SEND` and the timeout constant `USB_TIMEOUT` are related. Both need to be
-/// selected in a way that transferring the maximum chunk size with (SoC-specific) slow transfer
+/// selected in a way that transferring the maximum chunk size with (*SoC*-specific) slow transfer
 /// speed won't time out.
 ///
 /// The *512 KiB* here are chosen based on the assumption that we want a 10 seconds timeout, and
@@ -85,6 +100,7 @@ const AW_FEL_1_READ: u32 = 0x103;
 // We don't want the scratch code/buffer to exceed a maximum size of `0x400` bytes (256 32-bit
 // words) on `read_words()`/`write_words()` transfers. To guarantee this, we have to account for
 // the amount of space the ARM code uses.
+
 /// Word count of the `[read/write]_words()` scratch code.
 const LCODE_ARM_RW_WORDS: usize = 12;
 /// Word count of the `rmr_request` scratch code.
@@ -96,11 +112,16 @@ const LCODE_MAX_TOTAL: usize = 0x100;
 /// Data words for read/write requests.
 const LCODE_MAX_RW_WORDS: usize = (LCODE_MAX_TOTAL - LCODE_ARM_RW_WORDS);
 
+/// *DRAM* base address.
+const DRAM_BASE: u32 = 0x40000000;
+/// *DRAM* size, in bytes.
+const DRAM_SIZE: u32 = 0x80000000;
+
 /// Converts a reference to a `u32` slice to a reference to a `u8` slice.
 ///
 /// The new slice will have a 4 times bigger length.
 #[inline(always)]
-fn u32_as_u8<'a>(src: &'a [u32]) -> &'a [u8] {
+fn u32_as_u8(src: &[u32]) -> &[u8] {
     unsafe { std::slice::from_raw_parts(src.as_ptr() as *mut u8, src.len() * 4) }
 }
 
@@ -108,7 +129,7 @@ fn u32_as_u8<'a>(src: &'a [u32]) -> &'a [u8] {
 ///
 /// The new slice will have a 4 times bigger length.
 #[inline(always)]
-fn u32_as_u8_mut<'a>(src: &'a mut [u32]) -> &'a mut [u8] {
+fn u32_as_u8_mut(src: &mut [u32]) -> &mut [u8] {
     unsafe { std::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8, src.len() * 4) }
 }
 
@@ -122,16 +143,327 @@ pub struct FelHandle<'h> {
 impl<'h> FelHandle<'h> {
     /// Gets the SoC information from the FEL device.
     ///
-    /// Note: This is a no-op. The SoC information is acquired during initialization.
+    /// Note: This is a no-op. The *SoC* information is acquired during initialization.
     pub fn get_soc_info(&self) -> &SocInfo {
         &self.soc_info
     }
 
-    /// Gets the SoC version information from the FEL device.
+    /// Gets the *SoC* version information from the *FEL* device.
     ///
     /// Note: This is a no-op. The SoC information is acquired during initialization.
     pub fn get_version_info(&self) -> &SocVersion {
         &self.soc_version
+    }
+
+    /// Enables the L2 cache.
+    fn enable_l2_cache(&self) -> Result<()> {
+        let arm_code: [u32; 4] = [// mrc        15, 0, r2, cr1, cr0, {1}
+                                  0x_ee_11_2f_30_u32.to_le(),
+                                  // orr        r2, r2, #2
+                                  0x_e3_82_20_02_u32.to_le(),
+                                  // mcr        15, 0, r2, cr1, cr0, {1}
+                                  0x_ee_01_2f_30_u32.to_le(),
+                                  // Return back to FEL
+                                  // bx         lr
+                                  0x_e1_2f_ff_1e_u32.to_le()];
+        self.fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
+            .chain_err(|| "could not write L2 cache enabling ARM code")?;
+        self.fel_execute(self.soc_info.get_scratch_addr())
+            .chain_err(|| "could not execute L2 cache enabling ARM code")?;
+        Ok(())
+    }
+
+    /// Gets stack information.
+    ///
+    /// The result will be a tuple. The first element will be the `SP_irq`, while the second element
+    /// will be the nuser mode `SP`.
+    fn get_stack_info(&self) -> Result<(u32, u32)> {
+        let arm_code: [u32; 9] = [// mrs        r0, CPSR
+                                  0x_e1_0f_00_00_u32.to_le(),
+                                  // bic        r1, r0, #31
+                                  0x_e3_c0_10_1f_u32.to_le(),
+                                  // orr        r1, r1, #18
+                                  0x_e3_81_10_12_u32.to_le(),
+                                  // msr        CPSR_c, r1
+                                  0x_e1_21_f0_01_u32.to_le(),
+                                  // mov        r1, sp
+                                  0x_e1_a0_10_0d_u32.to_le(),
+                                  // msr        CPSR_c, r0
+                                  0x_e1_21_f0_00_u32.to_le(),
+                                  // str        r1, [pc, #4]
+                                  0x_e5_8f_10_04_u32.to_le(),
+                                  // str        sp, [pc, #4]
+                                  0x_e5_8f_d0_04_u32.to_le(),
+                                  // Return back to FEL
+                                  // bx         lr
+                                  0x_e1_2f_ff_1e_u32.to_le()];
+        self.fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
+            .chain_err(|| "could not write ARM code to read stack information")?;
+        self.fel_execute(self.soc_info.get_scratch_addr())
+            .chain_err(|| "could not execute ARM code to get stack information")?;
+        let mut result = [0u8; 2 * 4];
+        self.fel_read(self.soc_info.get_scratch_addr() + 9 * 4, &mut result)
+            .chain_err(|| "could not read generated stack information")?;
+        Ok((LittleEndian::read_u32(&result[..4]), LittleEndian::read_u32(&result[4..])))
+    }
+
+    /// Generates a default *MMU* translation table.
+    fn default_mmu_translation_table() -> [u32; 4 * 1024] {
+        let mut tt = [0u32; 4 * 1024];
+        for (i, word) in tt.iter_mut().enumerate() {
+            *word = 0x00000DE2 | ((i as u32) << 20);
+            if i == 0x000 || i == 0xFFF {
+                *word |= 0x1000;
+            }
+        }
+        tt
+    }
+
+    /// Backup *MMU* translation table and disable it.
+    fn backup_and_disable_mmu(&self) -> Result<Option<[u32; 4 * 1024]>> {
+        // Below are some checks for the register values, which are known to be initialized in this
+        // particular way by the existing BROM implementations. We don't strictly need them to
+        // exactly match, but still have these safety guards in place in order to detect and review
+        // any potential configuration changes in future SoC variants (if one of these checks fails,
+        // then it is not a serious problem but more likely just an indication that one of these
+        // check needs to be relaxed).
+
+        // Basically, ignore M/Z/I/V/UNK bits and expect no TEX remap.
+        // Check `SCTLR` register.
+        let sctlr = self.get_sctlr().chain_err(|| "unable to read SCTLR register")?;
+        if (sctlr & !((0x7 << 11) | (1 << 6) | 1)) != 0x00C50038 {
+            bail!("unexpected SCTLR register ({:#010x})", sctlr);
+        }
+        if (sctlr & 0x00000001) == 0 {
+            return Ok(None);
+        }
+
+        // Check `DACR` register.
+        let dacr = self.get_dacr().chain_err(|| "unable to read DACR register")?;
+        if dacr != 0x55555555 {
+            bail!("unexpected DACR register ({:#010x})", dacr);
+        }
+
+        // Check `TTBRC` register.
+        let ttbcr = self.get_ttbcr().chain_err(|| "unable to read TTBCR register")?;
+        if ttbcr != 0x00000000 {
+            bail!("unexpected TTBCR register ({:#010x})", ttbcr);
+        }
+
+        // Check `TTBR0` register
+        let ttbr0 = self.get_ttbr0().chain_err(|| "unable to read TTBR0 register")?;
+        if (ttbr0 & 0x00003FFF) != 0 {
+            bail!("unexpected TTBR0 register ({:#010x})", ttbr0);
+        }
+
+        // Read MMU translation table.
+        let mut tt = [0u32; 4 * 1024];
+        self.fel_read(ttbr0, u32_as_u8_mut(&mut tt))
+            .chain_err(|| {
+                format!("could not read the MMU translation table from {:#010x}",
+                        ttbr0)
+            })?;
+        for (i, le_word) in tt.iter_mut().enumerate() {
+            let word = u32::from_le(*le_word);
+
+            // Sanity checks:
+            if ((word >> 1) & 1) != 1 || ((word >> 18) & 1) != 0 {
+                bail!("found a word in the translation table that was not a section descriptor");
+            }
+            if (word >> 20) != i as u32 {
+                bail!("found a word in the translation table that was not a direct mapping");
+            }
+            *le_word = word;
+        }
+
+        // Disable I-cache, MMU and branch prediction
+        let arm_code: [u32; 6] = [// mrc        15, 0, r0, cr1, cr0, {0}
+                                  0x_ee_11_0f_10_u32.to_le(),
+                                  // bic        r0, r0, #1
+                                  0x_e3_c0_00_01_u32.to_le(),
+                                  // bic        r0, r0, #4096
+                                  0x_e3_c0_0a_01_u32.to_le(),
+                                  // bic        r0, r0, #2048
+                                  0x_e3_c0_0b_02_u32.to_le(),
+                                  // mcr        15, 0, r0, cr1, cr0, {0}
+                                  0x_ee_01_0f_10_u32.to_le(),
+                                  // Return back to FEL
+                                  // bx         lr
+                                  0x_e1_2f_ff_1e_u32.to_le()];
+
+        self.fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
+            .chain_err(|| {
+                "could not write ARM code to memory for disabling I-cache, MMU and branch \
+                 prediction"
+            })?;
+        self.fel_execute(self.soc_info.get_scratch_addr())
+            .chain_err(|| {
+                "could not execute ARM code to memory to disable I-cache, MMU and branch prediction"
+            })?;
+        Ok(Some(tt))
+    }
+
+    // Restore and enable MMU.
+    fn restore_and_enable_mmu(&self, mut tt: [u32; 4 * 1024]) -> Result<()> {
+        let ttbr0 = self.get_ttbr0().chain_err(|| "unable to read `TBBR0` register")?;
+
+        // Setting write-combine mapping for *DRAM*.
+        let start = (DRAM_BASE >> 20) as usize;
+        let end = ((DRAM_BASE + DRAM_SIZE) >> 20) as usize;
+        for word in tt[start..end].iter_mut() {
+            // Clear `TEXCB` bits
+            *word &= !((7 << 12) | (1 << 3) | (1 << 2));
+            // Set `TEXCB` to `00100` (Normal uncached mapping)
+            *word |= 1 << 12;
+        }
+
+        // Setting cached mappint for *BROM*.
+        // Clear `TEXCB` bits first
+        tt[0xFFF] &= !((7 << 12) | (1 << 3) | (1 << 2));
+        // Set `TEXCB` to `00111` (Normal write-back cached mapping)
+        tt[0xFFF] |= (1 << 12) | // TEX
+                     (1 << 3) | // C
+                     (1 << 2); // B
+
+        if cfg!(not(target_endian = "little")) {
+            for word in tt.iter_mut() {
+                *word = word.to_le();
+            }
+        }
+
+        self.fel_write(ttbr0, u32_as_u8(&tt))
+            .chain_err(|| "could not write MMU translation table to memory")?;
+
+        // Enabling I-cache, MMU and branch prediction...
+        let arm_code: [u32; 12] = [// Invalidate I-cache, TLB and BTB
+                                   // mov        r0, #0
+                                   0x_e3_a0_00_00_u32.to_le(),
+                                   // mcr        15, 0, r0, cr8, cr7, {0}
+                                   0x_ee_08_0f_17_u32.to_le(),
+                                   // mcr        15, 0, r0, cr7, cr5, {0}
+                                   0x_ee_07_0f_15_u32.to_le(),
+                                   // mcr        15, 0, r0, cr7, cr5, {6}
+                                   0x_ee_07_0f_d5_u32.to_le(),
+                                   // dsb        sy
+                                   0x_f5_7f_f0_4f_u32.to_le(),
+                                   // isb        sy
+                                   0x_f5_7f_f0_6f_u32.to_le(),
+                                   // Enable I-cache, MMU and branch prediction
+                                   // mrc        15, 0, r0, cr1, cr0, {0}
+                                   0x_ee_11_0f_10_u32.to_le(),
+                                   // orr        r0, r0, #1
+                                   0x_e3_80_00_01_u32.to_le(),
+                                   // orr        r0, r0, #4096
+                                   0x_e3_80_0a_01_u32.to_le(),
+                                   // orr        r0, r0, #2048
+                                   0x_e3_80_0b_02_u32.to_le(),
+                                   // mcr        15, 0, r0, cr1, cr0, {0}
+                                   0x_ee_01_0f_10_u32.to_le(),
+                                   // Return back to FEL
+                                   // bx         lr
+                                   0x_e1_2f_ff_1e_u32.to_le()];
+
+        self.fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
+            .chain_err(|| "could not write MMU enablement code to device memory")?;
+        self.fel_execute(self.soc_info.get_scratch_addr())
+            .chain_err(|| "could not execute the MMU enablement code")?;
+        Ok(())
+    }
+
+    /// Gets the `TTBR0` register.
+    fn get_ttbr0(&self) -> Result<u32> {
+        self.read_arm_cp_reg(15, 0, 2, 0, 0)
+    }
+
+    /// Sets the `TTBR0` register to the given value.
+    fn set_ttbr0(&self, val: u32) -> Result<()> {
+        self.write_arm_cp_reg(15, 0, 2, 0, 0, val)
+    }
+
+    /// Gets the `TTBCR` register.
+    fn get_ttbcr(&self) -> Result<u32> {
+        self.read_arm_cp_reg(15, 0, 2, 0, 2)
+    }
+
+    /// Sets the `TTBCR` register to the given value.
+    fn set_ttbcr(&self, val: u32) -> Result<()> {
+        self.write_arm_cp_reg(15, 0, 2, 0, 2, val)
+    }
+
+    /// Gets the `DACR` register.
+    fn get_dacr(&self) -> Result<u32> {
+        self.read_arm_cp_reg(15, 0, 3, 0, 0)
+    }
+
+    /// Sets the `DACR` register to the given value.
+    fn set_dacr(&self, val: u32) -> Result<()> {
+        self.write_arm_cp_reg(15, 0, 3, 0, 0, val)
+    }
+
+    /// Gets the `SCTLR` register.
+    fn get_sctlr(&self) -> Result<u32> {
+        self.read_arm_cp_reg(15, 0, 1, 0, 0)
+    }
+
+    /// Sets the `SCTLR` register to the given value.
+    fn set_sctlr(&self, val: u32) -> Result<()> {
+        self.write_arm_cp_reg(15, 0, 1, 0, 0, val)
+    }
+
+    /// Reads the given ARM register.
+    fn read_arm_cp_reg(&self,
+                       coproc: u32,
+                       opc1: u32,
+                       crn: u32,
+                       crm: u32,
+                       opc2: u32)
+                       -> Result<u32> {
+        let opcode = 0xEE000000 | (1 << 20) | (1 << 4) | ((opc1 & 7) << 21) | ((crn & 15) << 16) |
+                     ((coproc & 15) << 8) |
+                     ((opc2 & 7) << 5) | (crm & 15);
+        let arm_code: [u32; 3] = [// mrc  coproc, opc1, r0, crn, crm, opc2
+                                  opcode.to_le(),
+                                  // str  r0, [pc]
+                                  0x_e5_8f_00_00_u32.to_le(),
+                                  // bx   lr
+                                  0x_e1_2f_ff_1e_u32.to_le()];
+        self.fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
+            .chain_err(|| "could not write ARM code to read register")?;
+        self.fel_execute(self.soc_info.get_scratch_addr())
+            .chain_err(|| "could not execute ARM code to read register")?;
+        let mut reg_value = [0u8; 4];
+        self.fel_read(self.soc_info.get_scratch_addr() + 3 * 4, &mut reg_value)
+            .chain_err(|| "could not read the register information from memory")?;
+        Ok(LittleEndian::read_u32(&reg_value))
+    }
+
+    /// Writes the given value to the given ARM register.
+    fn write_arm_cp_reg(&self,
+                        coproc: u32,
+                        opc1: u32,
+                        crn: u32,
+                        crm: u32,
+                        opc2: u32,
+                        val: u32)
+                        -> Result<()> {
+        let opcode = 0xEE000000 | (1 << 4) | ((opc1 & 7) << 21) | ((crn & 15) << 16) |
+                     ((coproc & 15) << 8) | ((opc2 & 7) << 5) | (crm & 15);
+        let arm_code: [u32; 6] = [// ldr  r0, [pc, #12]
+                                  0x_e5_9f_00_0c_u32.to_le(),
+                                  // mcr  coproc, opc1, r0, crn, crm, opc2
+                                  opcode.to_le(),
+                                  // dsb  sy
+                                  0x_f5_7f_f0_4f_u32.to_le(),
+                                  // isb  sy
+                                  0x_f5_7f_f0_6f_u32.to_le(),
+                                  // bx   lr
+                                  0x_e1_2f_ff_1e_u32.to_le(),
+                                  val.to_le()];
+        self.fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
+            .chain_err(|| "could not write ARM code to write to register")?;
+        self.fel_execute(self.soc_info.get_scratch_addr())
+            .chain_err(|| "could not execute ARM code to write to register")?;
+        Ok(())
     }
 
     /// Reads the SID from the SoC if it has one.
@@ -210,15 +542,12 @@ impl<'h> FelHandle<'h> {
         // read_data (buffer) follows, i.e. values go here.
 
         /// scratch buffer setup: transfers ARM code, including addr and count
-        self.usb_handle
-            .fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
+        self.fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
             .chain_err(|| "unable to write ARM code to scratch address")?;
         // execute code, read back the result
-        self.usb_handle
-            .fel_execute(self.soc_info.get_scratch_addr())
+        self.fel_execute(self.soc_info.get_scratch_addr())
             .chain_err(|| "unable to execute ARM code")?;
-        self.usb_handle
-            .fel_read(self.soc_info.get_scratch_addr() + LCODE_ARM_RW_SIZE as u32,
+        self.fel_read(self.soc_info.get_scratch_addr() + LCODE_ARM_RW_SIZE as u32,
                       u32_as_u8_mut(words))
             .chain_err(|| "unable to read generated buffer")?;
 
@@ -268,12 +597,10 @@ impl<'h> FelHandle<'h> {
         }
 
         /// scratch buffer setup: transfers ARM code and data
-        self.usb_handle
-            .fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
+        self.fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
             .chain_err(|| "unable to write ARM code to scratch address")?;
         // execute code
-        self.usb_handle
-            .fel_execute(self.soc_info.get_scratch_addr())
+        self.fel_execute(self.soc_info.get_scratch_addr())
             .chain_err(|| "unable to execute ARM code")?;
 
         Ok(())
@@ -322,11 +649,9 @@ impl<'h> FelHandle<'h> {
                                                         entry_point.to_le(),
                                                         rmr_mode.to_le()];
 
-            self.usb_handle
-                .fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
+            self.fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
                 .chain_err(|| "unable to write ARM code to scratch address")?;
-            self.usb_handle
-                .fel_execute(self.soc_info.get_scratch_addr())
+            self.fel_execute(self.soc_info.get_scratch_addr())
                 .chain_err(|| "unable to execute ARM code")?;
             Ok(())
         } else {
@@ -417,7 +742,7 @@ impl<'h> UsbHandle<'h> {
                 num_bytes,
                 u32::MAX - offset);
         let buf = vec![byte; num_bytes as usize];
-        let _ = self.fel_write(offset, &buf)
+        self.fel_write(offset, &buf)
             .chain_err(|| "unable to write filling buffer to device memory")?;
         Ok(())
     }
@@ -543,7 +868,7 @@ impl<'h> UsbHandle<'h> {
         UsbHandle::usb_bulk_recv(&self.device_handle, self.endpoint_in, &mut buf)
                 .chain_err(|| "unable to receive data in bulk from USB")?;
         if &buf[..4] != b"AWUS" {
-            Err(Error::from_kind(ErrorKind::Response("AWUS[...]".to_owned(),
+            Err(Error::from_kind(ErrorKind::Response("AWUS[...]",
                                                      format!("{}[...]",
                                                              String::from_utf8_lossy(&buf[..4])))))
         } else {
