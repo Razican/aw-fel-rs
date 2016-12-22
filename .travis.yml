@@ -13,7 +13,7 @@ addons:
       - libdw-dev
       - binutils-dev
       - libusb-dev
-      - libusb
+      - libusb-1.0-0
 
 # Run builds for all the supported trains
 rust:
