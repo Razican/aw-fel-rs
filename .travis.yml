@@ -14,6 +14,7 @@ addons:
       - binutils-dev
       - libusb-dev
       - libusb-1.0-0
+      - pkg-config
 
 # Run builds for all the supported trains
 rust:
