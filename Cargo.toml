@@ -10,6 +10,7 @@ description = """
 Library for dealing with Allwinner devices in FEL mode, in pure Rust.
 """
 keywords = ["arm", "sunxi", "allwinner", "fel"]
+categories = ["embedded"]
 
 [dependencies]
 error-chain = "0.9"
