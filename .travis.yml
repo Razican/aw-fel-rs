@@ -13,12 +13,15 @@ addons:
       - libdw-dev
       - binutils-dev
       - libusb-dev
+      - libusb-1.0-0
+      - pkg-config
 
 # Run builds for all the supported trains
 rust:
   - nightly
   - beta
   - stable
+  - 1.14.0
   - 1.13.0
 
 # Install libusb in MacOS X
