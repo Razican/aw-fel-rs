@@ -1,7 +1,5 @@
 //! *SoC* module.
 
-use std::fmt;
-
 /// Allwinner *A10*, *A13* and *A20* *SRAM* swap buffers.
 ///
 /// The *FEL* code from *BROM* in *A10/A13/A20* sets up two stacks for itself. One at `0x2000` (and
@@ -10,25 +8,27 @@ use std::fmt;
 /// to temporarily move these stacks elsewhere. And the addresses `0x7D00`–`0x7FFF` contain
 /// something important too (overwriting them kills *FEL*). On *A10/A13/A20* we can use the *SRAM*
 /// sections *A3/A4* (`0x8000`–`0xBFFF`) for this purpose.
-const A10_A13_A20_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 3] = [// `0x1C00`–`0x1FFF` (IRQ stack)
-                                                             SRAMSwapBuffers {
-                                                                 buf1: 0x1C00,
-                                                                 buf2: 0xA400,
-                                                                 size: 0x0400,
-                                                             },
-                                                             // `0x5C00`–`0x6FFF` (Stack)
-                                                             SRAMSwapBuffers {
-                                                                 buf1: 0x5C00,
-                                                                 buf2: 0xA800,
-                                                                 size: 0x1400,
-                                                             },
-                                                             // `0x7C00`–`0x7FFF`
-                                                             // (Something important)
-                                                             SRAMSwapBuffers {
-                                                                 buf1: 0x7C00,
-                                                                 buf2: 0xBC00,
-                                                                 size: 0x0400,
-                                                             }];
+const A10_A13_A20_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 3] = [
+    // `0x1C00`–`0x1FFF` (IRQ stack)
+    SRAMSwapBuffers {
+        buf1: 0x1C00,
+        buf2: 0xA400,
+        size: 0x0400,
+    },
+    // `0x5C00`–`0x6FFF` (Stack)
+    SRAMSwapBuffers {
+        buf1: 0x5C00,
+        buf2: 0xA800,
+        size: 0x1400,
+    },
+    // `0x7C00`–`0x7FFF`
+    // (Something important)
+    SRAMSwapBuffers {
+        buf1: 0x7C00,
+        buf2: 0xBC00,
+        size: 0x0400,
+    },
+];
 
 /// Allwinner *A31* *SRAM* swap buffers.
 ///
@@ -36,16 +36,18 @@ const A10_A13_A20_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 3] = [// `0x1C00`–`0x1F
 /// *SRAM* section *B* at `0x20000`–`0x2FFFF` instead. In the *FEL* mode, the *MMU* translation
 /// table is allocated by the *BROM* at `0x20000`. But we can also safely use it as the backup
 /// storage because the *MMU* is temporarily disabled during the time of the *SPL* execution.
-const A31_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 2] = [SRAMSwapBuffers {
-                                                         buf1: 0x1800,
-                                                         buf2: 0x20000,
-                                                         size: 0x800,
-                                                     },
-                                                     SRAMSwapBuffers {
-                                                         buf1: 0x5C00,
-                                                         buf2: 0x20800,
-                                                         size: 0x8000 - 0x5C00,
-                                                     }];
+const A31_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 2] = [
+    SRAMSwapBuffers {
+        buf1: 0x1800,
+        buf2: 0x20000,
+        size: 0x800,
+    },
+    SRAMSwapBuffers {
+        buf1: 0x5C00,
+        buf2: 0x20800,
+        size: 0x8000 - 0x5C00,
+    },
+];
 
 /// Allwinner *A64* *SRAM* swap buffers.
 ///
@@ -53,217 +55,225 @@ const A31_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 2] = [SRAMSwapBuffers {
 /// and *SRAM* *C* reside in the address space back-to-back without any gaps, thus representing a
 /// singe large contiguous area. Everything is the same as on *A10/A13/A20*, but just shifted by
 /// `0x10000`.
-const A64_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 3] = [// `0x11C00`–`0x11FFF` (IRQ stack)
-                                                     SRAMSwapBuffers {
-                                                         buf1: 0x11C00,
-                                                         buf2: 0x1A400,
-                                                         size: 0x0400,
-                                                     },
-                                                     // `0x15C00`–`0x16FFF` (Stack)
-                                                     SRAMSwapBuffers {
-                                                         buf1: 0x15C00,
-                                                         buf2: 0x1A800,
-                                                         size: 0x1400,
-                                                     },
-                                                     // `0x17C00`–`0x17FFF` (Something important)
-                                                     SRAMSwapBuffers {
-                                                         buf1: 0x17C00,
-                                                         buf2: 0x1BC00,
-                                                         size: 0x0400,
-                                                     }];
+const A64_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 3] = [
+    // `0x11C00`–`0x11FFF` (IRQ stack)
+    SRAMSwapBuffers {
+        buf1: 0x11C00,
+        buf2: 0x1A400,
+        size: 0x0400,
+    },
+    // `0x15C00`–`0x16FFF` (Stack)
+    SRAMSwapBuffers {
+        buf1: 0x15C00,
+        buf2: 0x1A800,
+        size: 0x1400,
+    },
+    // `0x17C00`–`0x17FFF` (Something important)
+    SRAMSwapBuffers {
+        buf1: 0x17C00,
+        buf2: 0x1BC00,
+        size: 0x0400,
+    },
+];
 
 /// *AR100* *SRAM* swap buffers.
 ///
 /// Use the *SRAM* section at `0x44000` as the backup storage. This is the memory, which is
 /// normally shared with the *OpenRISC* core (should we do an extra check to ensure that this core
 /// is powered off and can't interfere?).
-const AR100_ABUSING_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 2] = [SRAMSwapBuffers {
-                                                                   buf1: 0x1800,
-                                                                   buf2: 0x44000,
-                                                                   size: 0x800,
-                                                               },
-                                                               SRAMSwapBuffers {
-                                                                   buf1: 0x5C00,
-                                                                   buf2: 0x44800,
-                                                                   size: 0x8000 - 0x5C00,
-                                                               }];
+const AR100_ABUSING_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 2] = [
+    SRAMSwapBuffers {
+        buf1: 0x1800,
+        buf2: 0x44000,
+        size: 0x800,
+    },
+    SRAMSwapBuffers {
+        buf1: 0x5C00,
+        buf2: 0x44800,
+        size: 0x8000 - 0x5C00,
+    },
+];
 
 /// *A80* *SRAM* swap buffers.
 ///
 /// *A80* has *40KiB* *SRAM* *A1* at `0x10000` where the *SPL* has to be loaded to. The secure
 /// *SRAM* *B* at `0x20000` is used as backup area for *FEL* stacks and data.
-const A80_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 2] = [SRAMSwapBuffers {
-                                                         buf1: 0x11800,
-                                                         buf2: 0x20000,
-                                                         size: 0x800,
-                                                     },
-                                                     SRAMSwapBuffers {
-                                                         buf1: 0x15400,
-                                                         buf2: 0x20800,
-                                                         size: 0x18000 - 0x15400,
-                                                     }];
+const A80_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 2] = [
+    SRAMSwapBuffers {
+        buf1: 0x11800,
+        buf2: 0x20000,
+        size: 0x800,
+    },
+    SRAMSwapBuffers {
+        buf1: 0x15400,
+        buf2: 0x20800,
+        size: 0x18000 - 0x15400,
+    },
+];
 
 /// Table with all the supported *SoCs*.
-const SOC_INFO_TABLE: [SocInfo; 12] = [SocInfo {
-                                           soc_id: 0x1623, // Allwinner A10
-                                           name: "A10",
-                                           spl_addr: 0x00000000,
-                                           scratch_addr: 0x1000,
-                                           thunk_addr: 0xA200,
-                                           thunk_size: 0x200,
-                                           needs_l2en: true,
-                                           mmu_tt_addr: None,
-                                           sid_addr: Some(0x01C23800),
-                                           rvbar_reg: None,
-                                           swap_buffers: &A10_A13_A20_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1625, // Allwinner A10s, A13, R8
-                                           name: "A10s/A13/R8",
-                                           spl_addr: 0x00000000,
-                                           scratch_addr: 0x1000,
-                                           thunk_addr: 0xA200,
-                                           thunk_size: 0x200,
-                                           needs_l2en: true,
-                                           mmu_tt_addr: None,
-                                           sid_addr: Some(0x01C23800),
-                                           rvbar_reg: None,
-                                           swap_buffers: &A10_A13_A20_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1651, // Allwinner A20
-                                           name: "A20",
-                                           spl_addr: 0x00000000,
-                                           scratch_addr: 0x1000,
-                                           thunk_addr: 0xA200,
-                                           thunk_size: 0x200,
-                                           needs_l2en: false,
-                                           mmu_tt_addr: None,
-                                           sid_addr: Some(0x01C23800),
-                                           rvbar_reg: None,
-                                           swap_buffers: &A10_A13_A20_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1650, // Allwinner A23
-                                           name: "A23",
-                                           spl_addr: 0x00000000,
-                                           scratch_addr: 0x1000,
-                                           thunk_addr: 0x46E00,
-                                           thunk_size: 0x200,
-                                           needs_l2en: false,
-                                           mmu_tt_addr: None,
-                                           sid_addr: Some(0x01C23800),
-                                           rvbar_reg: None,
-                                           swap_buffers: &AR100_ABUSING_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1633, // Allwinner A31
-                                           name: "A31",
-                                           spl_addr: 0x00000000,
-                                           scratch_addr: 0x1000,
-                                           thunk_addr: 0x22E00,
-                                           thunk_size: 0x200,
-                                           needs_l2en: false,
-                                           mmu_tt_addr: None,
-                                           sid_addr: None,
-                                           rvbar_reg: None,
-                                           swap_buffers: &A31_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1667, // Allwinner A33, R16
-                                           name: "A33/R16",
-                                           spl_addr: 0x00000000,
-                                           scratch_addr: 0x1000,
-                                           thunk_addr: 0x46E00,
-                                           thunk_size: 0x200,
-                                           needs_l2en: false,
-                                           mmu_tt_addr: None,
-                                           sid_addr: Some(0x01C23800),
-                                           rvbar_reg: None,
-                                           swap_buffers: &AR100_ABUSING_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1689, // Allwinner A64
-                                           name: "A64",
-                                           spl_addr: 0x10000,
-                                           scratch_addr: 0x11000,
-                                           thunk_addr: 0x1A200,
-                                           thunk_size: 0x200,
-                                           needs_l2en: false,
-                                           mmu_tt_addr: None,
-                                           sid_addr: Some(0x01C14200),
-                                           rvbar_reg: Some(0x017000A0),
-                                           swap_buffers: &A64_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1639, // Allwinner A80
-                                           name: "A80",
-                                           spl_addr: 0x10000,
-                                           scratch_addr: 0x11000,
-                                           thunk_addr: 0x23400,
-                                           thunk_size: 0x200,
-                                           needs_l2en: false,
-                                           mmu_tt_addr: None,
-                                           sid_addr: Some(0x01C0E200),
-                                           rvbar_reg: None,
-                                           swap_buffers: &A80_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1673, // Allwinner A83T
-                                           name: "A83T",
-                                           spl_addr: 0x00000000,
-                                           scratch_addr: 0x1000,
-                                           thunk_addr: 0x46E00,
-                                           thunk_size: 0x200,
-                                           needs_l2en: false,
-                                           mmu_tt_addr: None,
-                                           sid_addr: Some(0x01C14200),
-                                           rvbar_reg: None,
-                                           swap_buffers: &AR100_ABUSING_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1680, // Allwinner H3, H2+
-                                           name: "H3/H2+",
-                                           spl_addr: 0x00000000,
-                                           scratch_addr: 0x1000,
-                                           thunk_addr: 0xA200,
-                                           thunk_size: 0x200,
-                                           needs_l2en: false,
-                                           mmu_tt_addr: Some(0x8000),
-                                           sid_addr: Some(0x01C14200),
-                                           rvbar_reg: None,
-                                           swap_buffers: &A10_A13_A20_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1718, // Allwinner H5
-                                           name: "H5",
-                                           spl_addr: 0x10000,
-                                           scratch_addr: 0x11000,
-                                           thunk_addr: 0x1A200,
-                                           thunk_size: 0x200,
-                                           needs_l2en: false,
-                                           mmu_tt_addr: None,
-                                           sid_addr: Some(0x01C14200),
-                                           rvbar_reg: Some(0x017000A0),
-                                           swap_buffers: &A64_SRAM_SWAP_BUFFERS,
-                                       },
-                                       SocInfo {
-                                           soc_id: 0x1701, // Allwinner R40
-                                           name: "R40",
-                                           spl_addr: 0x00000000,
-                                           scratch_addr: 0x1000,
-                                           thunk_addr: 0xA200,
-                                           thunk_size: 0x200,
-                                           needs_l2en: false,
-                                           mmu_tt_addr: None,
-                                           sid_addr: Some(0x01C1B200),
-                                           rvbar_reg: None,
-                                           swap_buffers: &A10_A13_A20_SRAM_SWAP_BUFFERS,
-                                       }];
+const SOC_INFO_TABLE: [Info; 12] = [
+    Info {
+        soc_id: 0x1623, // Allwinner A10
+        name: "A10",
+        spl_addr: 0x0000_0000,
+        scratch_addr: 0x1000,
+        thunk_addr: 0xA200,
+        thunk_size: 0x200,
+        needs_l2en: true,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C2_3800),
+        rvbar_reg: None,
+        swap_buffers: &A10_A13_A20_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1625, // Allwinner A10s, A13, R8
+        name: "A10s/A13/R8",
+        spl_addr: 0x0000_0000,
+        scratch_addr: 0x1000,
+        thunk_addr: 0xA200,
+        thunk_size: 0x200,
+        needs_l2en: true,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C2_3800),
+        rvbar_reg: None,
+        swap_buffers: &A10_A13_A20_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1651, // Allwinner A20
+        name: "A20",
+        spl_addr: 0x0000_0000,
+        scratch_addr: 0x1000,
+        thunk_addr: 0xA200,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C2_3800),
+        rvbar_reg: None,
+        swap_buffers: &A10_A13_A20_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1650, // Allwinner A23
+        name: "A23",
+        spl_addr: 0x0000_0000,
+        scratch_addr: 0x1000,
+        thunk_addr: 0x46E00,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C2_3800),
+        rvbar_reg: None,
+        swap_buffers: &AR100_ABUSING_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1633, // Allwinner A31
+        name: "A31",
+        spl_addr: 0x0000_0000,
+        scratch_addr: 0x1000,
+        thunk_addr: 0x22E00,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: None,
+        sid_addr: None,
+        rvbar_reg: None,
+        swap_buffers: &A31_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1667, // Allwinner A33, R16
+        name: "A33/R16",
+        spl_addr: 0x0000_0000,
+        scratch_addr: 0x1000,
+        thunk_addr: 0x46E00,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C2_3800),
+        rvbar_reg: None,
+        swap_buffers: &AR100_ABUSING_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1689, // Allwinner A64
+        name: "A64",
+        spl_addr: 0x10000,
+        scratch_addr: 0x11000,
+        thunk_addr: 0x1A200,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C1_4200),
+        rvbar_reg: Some(0x0170_00A0),
+        swap_buffers: &A64_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1639, // Allwinner A80
+        name: "A80",
+        spl_addr: 0x10000,
+        scratch_addr: 0x11000,
+        thunk_addr: 0x23400,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C0_E200),
+        rvbar_reg: None,
+        swap_buffers: &A80_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1673, // Allwinner A83T
+        name: "A83T",
+        spl_addr: 0x0000_0000,
+        scratch_addr: 0x1000,
+        thunk_addr: 0x46E00,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C1_4200),
+        rvbar_reg: None,
+        swap_buffers: &AR100_ABUSING_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1680, // Allwinner H3, H2+
+        name: "H3/H2+",
+        spl_addr: 0x0000_0000,
+        scratch_addr: 0x1000,
+        thunk_addr: 0xA200,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: Some(0x8000),
+        sid_addr: Some(0x01C1_4200),
+        rvbar_reg: None,
+        swap_buffers: &A10_A13_A20_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1718, // Allwinner H5
+        name: "H5",
+        spl_addr: 0x10000,
+        scratch_addr: 0x11000,
+        thunk_addr: 0x1A200,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C1_4200),
+        rvbar_reg: Some(0x0170_00A0),
+        swap_buffers: &A64_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1701, // Allwinner R40
+        name: "R40",
+        spl_addr: 0x0000_0000,
+        scratch_addr: 0x1000,
+        thunk_addr: 0xA200,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C1_B200),
+        rvbar_reg: None,
+        swap_buffers: &A10_A13_A20_SRAM_SWAP_BUFFERS,
+    },
+];
 
 /// *SoC* version information, as retrieved by the *FEL* protocol
-#[derive(PartialEq)]
-pub struct SocVersion {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Version {
     signature: [u8; 8],
     /// `0x00162300`.
     soc_id: u32,
@@ -279,17 +289,17 @@ pub struct SocVersion {
     scratchpad: u32, // unused: pad: [u32; 2],
 }
 
-impl SocVersion {
+impl Version {
     /// Generates a SoC version information structure from the bytes response.
     #[doc(hidden)]
-    pub fn from_bytes(bytes: [u8; 32]) -> SocVersion {
-        use byteorder::{LittleEndian, ByteOrder};
+    pub fn from_bytes(bytes: [u8; 32]) -> Self {
+        use byteorder::{ByteOrder, LittleEndian};
 
-        let mut signature = [0u8; 8];
+        let mut signature = [0_u8; 8];
         signature.clone_from_slice(&bytes[..8]);
 
-        SocVersion {
-            signature: signature,
+        Self {
+            signature,
             soc_id: (LittleEndian::read_u32(&bytes[8..12]) >> 8) & 0xFFFF,
             protocol: LittleEndian::read_u16(&bytes[16..18]),
             scratchpad: LittleEndian::read_u32(&bytes[20..24]),
@@ -302,30 +312,13 @@ impl SocVersion {
     }
 }
 
-impl fmt::Debug for SocVersion {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-               "Signature: {}, SoC ID: {:#010x} ({}), protocol: {:#06x}, scratchpad: {:#010x}",
-               String::from_utf8_lossy(&self.signature),
-               self.soc_id,
-               if let Some(name) = get_soc_name_from_id(self.soc_id) {
-                   name
-               } else {
-                   "unknown"
-               },
-               self.protocol,
-               self.scratchpad)
-    }
-}
-
 /// Gets the *SoC* name from the given ID, if supported.
+#[allow(dead_code)]
 fn get_soc_name_from_id(soc_id: u32) -> Option<&'static str> {
-    for soc_info in &SOC_INFO_TABLE {
-        if soc_info.soc_id == soc_id {
-            return Some(soc_info.name);
-        }
-    }
-    None
+    SOC_INFO_TABLE
+        .iter()
+        .find(|info| info.soc_id == soc_id)
+        .map(|info| info.name)
 }
 
 /// *SRAM* buffers.
@@ -333,7 +326,7 @@ fn get_soc_name_from_id(soc_id: u32) -> Option<&'static str> {
 /// The `SRAMSwapBuffers` structure is used to describe information about pairwise memory regions
 /// in *SRAM*, the content of which needs to be exchanged before calling the U-Boot *SPL* code and
 /// then exchanged again before returning control back to the *FEL* code from the *BROM*.
-#[derive(PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SRAMSwapBuffers {
     /// BROM buffer.
     buf1: u32,
@@ -360,16 +353,6 @@ impl SRAMSwapBuffers {
     }
 }
 
-impl fmt::Debug for SRAMSwapBuffers {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-               "{{ BROM buffer: {:#010x}, backup storage: {:#010x}, buffer size: {:#010x} }}",
-               self.buf1,
-               self.buf2,
-               self.size)
-    }
-}
-
 /// *SoC* information structure.
 ///
 /// Each *SoC* variant may have its own list of memory buffers to be exchanged and the information
@@ -389,8 +372,8 @@ impl fmt::Debug for SRAMSwapBuffers {
 /// variants (*A33*/*A83T*/*H3*) doesn't enable *MMU* any more, so we need to find some 16K of
 /// spare space in *SRAM* to place the translation table there and specify it as the `mmu_tt_addr`
 /// field in the `soc_sram_info` structure. The `mmu_tt_addr` address must be 16K aligned.
-#[derive(PartialEq, Clone, Copy)]
-pub struct SocInfo {
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Info {
     /// ID of the SoC.
     soc_id: u32,
     /// Human-readable SoC name string.
@@ -415,9 +398,9 @@ pub struct SocInfo {
     swap_buffers: &'static [SRAMSwapBuffers],
 }
 
-impl SocInfo {
+impl Info {
     /// Gets the SoC information structure for the given ID, if supported.
-    pub fn from_id(soc_id: u32) -> Option<SocInfo> {
+    pub fn from_id(soc_id: u32) -> Option<Self> {
         for soc_info in &SOC_INFO_TABLE {
             if soc_info.soc_id == soc_id {
                 return Some(*soc_info);
@@ -428,8 +411,8 @@ impl SocInfo {
 
     /// Gets the SoC information structure from the givern `SoCVersion`, if supported.
     #[doc(hidden)]
-    pub fn from_version(version: &SocVersion) -> Option<SocInfo> {
-        SocInfo::from_id(version.soc_id)
+    pub fn from_version(version: &Version) -> Option<Self> {
+        Self::from_id(version.soc_id)
     }
 
     /// Gets the SoC ID.
@@ -497,145 +480,137 @@ impl SocInfo {
     }
 }
 
-impl fmt::Debug for SocInfo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-               "{{ SoC ID: {:#010x}, name: {}, SPL load address: {:#010x}, scratch address: \
-                {:#010x}, thunk address: {:#010x}, thunk size: {:#010x}, L2EN bit: {}, MMU \
-                translation table address: {}, SID registers address: {}, MMIO address of \
-                `RVBARADDR0_L` register: {}, SRAM swap buffers: {:?} }}",
-               self.soc_id,
-               self.name,
-               self.spl_addr,
-               self.scratch_addr,
-               self.thunk_addr,
-               self.thunk_size,
-               self.needs_l2en,
-               if let Some(mmu_tt_addr) = self.mmu_tt_addr {
-                   format!("{:#010x}", mmu_tt_addr)
-               } else {
-                   "None".to_owned()
-               },
-               if let Some(sid_addr) = self.sid_addr {
-                   format!("{:#010x}", sid_addr)
-               } else {
-                   "None".to_owned()
-               },
-               if let Some(rvbar_reg) = self.rvbar_reg {
-                   format!("{:#010x}", rvbar_reg)
-               } else {
-                   "None".to_owned()
-               },
-               self.swap_buffers)
-    }
-}
-
+/// SoC test module.
 #[cfg(test)]
 mod tests {
-    use super::{SOC_INFO_TABLE, A10_A13_A20_SRAM_SWAP_BUFFERS, A31_SRAM_SWAP_BUFFERS,
-                A64_SRAM_SWAP_BUFFERS, AR100_ABUSING_SRAM_SWAP_BUFFERS, A80_SRAM_SWAP_BUFFERS};
     use super::SRAMSwapBuffers;
+    use super::{A10_A13_A20_SRAM_SWAP_BUFFERS, A31_SRAM_SWAP_BUFFERS, A64_SRAM_SWAP_BUFFERS,
+                A80_SRAM_SWAP_BUFFERS, AR100_ABUSING_SRAM_SWAP_BUFFERS, SOC_INFO_TABLE};
 
     #[test]
     fn it_a10_a13_a20_sram_swap_buffers() {
         let buffers = A10_A13_A20_SRAM_SWAP_BUFFERS;
 
-        assert_eq!(buffers[0],
-                   SRAMSwapBuffers {
-                       buf1: 0x1C00,
-                       buf2: 0xA400,
-                       size: 0x0400,
-                   });
-        assert_eq!(buffers[1],
-                   SRAMSwapBuffers {
-                       buf1: 0x5C00,
-                       buf2: 0xA800,
-                       size: 0x1400,
-                   });
-        assert_eq!(buffers[2],
-                   SRAMSwapBuffers {
-                       buf1: 0x7C00,
-                       buf2: 0xBC00,
-                       size: 0x0400,
-                   });
+        assert_eq!(
+            buffers[0],
+            SRAMSwapBuffers {
+                buf1: 0x1C00,
+                buf2: 0xA400,
+                size: 0x0400,
+            }
+        );
+        assert_eq!(
+            buffers[1],
+            SRAMSwapBuffers {
+                buf1: 0x5C00,
+                buf2: 0xA800,
+                size: 0x1400,
+            }
+        );
+        assert_eq!(
+            buffers[2],
+            SRAMSwapBuffers {
+                buf1: 0x7C00,
+                buf2: 0xBC00,
+                size: 0x0400,
+            }
+        );
     }
 
     #[test]
     fn it_a31_sram_swap_buffers() {
         let buffers = A31_SRAM_SWAP_BUFFERS;
 
-        assert_eq!(buffers[0],
-                   SRAMSwapBuffers {
-                       buf1: 0x1800,
-                       buf2: 0x20000,
-                       size: 0x800,
-                   });
-        assert_eq!(buffers[1],
-                   SRAMSwapBuffers {
-                       buf1: 0x5C00,
-                       buf2: 0x20800,
-                       size: 0x8000 - 0x5C00,
-                   });
+        assert_eq!(
+            buffers[0],
+            SRAMSwapBuffers {
+                buf1: 0x1800,
+                buf2: 0x20000,
+                size: 0x800,
+            }
+        );
+        assert_eq!(
+            buffers[1],
+            SRAMSwapBuffers {
+                buf1: 0x5C00,
+                buf2: 0x20800,
+                size: 0x8000 - 0x5C00,
+            }
+        );
     }
 
     #[test]
     fn it_a64_sram_swap_buffers() {
         let buffers = A64_SRAM_SWAP_BUFFERS;
 
-        assert_eq!(buffers[0],
-                   SRAMSwapBuffers {
-                       buf1: 0x11C00,
-                       buf2: 0x1A400,
-                       size: 0x0400,
-                   });
-        assert_eq!(buffers[1],
-                   SRAMSwapBuffers {
-                       buf1: 0x15C00,
-                       buf2: 0x1A800,
-                       size: 0x1400,
-                   });
-        assert_eq!(buffers[2],
-                   SRAMSwapBuffers {
-                       buf1: 0x17C00,
-                       buf2: 0x1BC00,
-                       size: 0x0400,
-                   });
+        assert_eq!(
+            buffers[0],
+            SRAMSwapBuffers {
+                buf1: 0x11C00,
+                buf2: 0x1A400,
+                size: 0x0400,
+            }
+        );
+        assert_eq!(
+            buffers[1],
+            SRAMSwapBuffers {
+                buf1: 0x15C00,
+                buf2: 0x1A800,
+                size: 0x1400,
+            }
+        );
+        assert_eq!(
+            buffers[2],
+            SRAMSwapBuffers {
+                buf1: 0x17C00,
+                buf2: 0x1BC00,
+                size: 0x0400,
+            }
+        );
     }
 
     #[test]
     fn it_ar100_abusing_sram_swap_buffers() {
         let buffers = AR100_ABUSING_SRAM_SWAP_BUFFERS;
 
-        assert_eq!(buffers[0],
-                   SRAMSwapBuffers {
-                       buf1: 0x1800,
-                       buf2: 0x44000,
-                       size: 0x800,
-                   });
-        assert_eq!(buffers[1],
-                   SRAMSwapBuffers {
-                       buf1: 0x5C00,
-                       buf2: 0x44800,
-                       size: 0x8000 - 0x5C00,
-                   });
+        assert_eq!(
+            buffers[0],
+            SRAMSwapBuffers {
+                buf1: 0x1800,
+                buf2: 0x44000,
+                size: 0x800,
+            }
+        );
+        assert_eq!(
+            buffers[1],
+            SRAMSwapBuffers {
+                buf1: 0x5C00,
+                buf2: 0x44800,
+                size: 0x8000 - 0x5C00,
+            }
+        );
     }
 
     #[test]
     fn it_a80_sram_swap_buffers() {
         let buffers = A80_SRAM_SWAP_BUFFERS;
 
-        assert_eq!(buffers[0],
-                   SRAMSwapBuffers {
-                       buf1: 0x11800,
-                       buf2: 0x20000,
-                       size: 0x800,
-                   });
-        assert_eq!(buffers[1],
-                   SRAMSwapBuffers {
-                       buf1: 0x15400,
-                       buf2: 0x20800,
-                       size: 0x18000 - 0x15400,
-                   });
+        assert_eq!(
+            buffers[0],
+            SRAMSwapBuffers {
+                buf1: 0x11800,
+                buf2: 0x20000,
+                size: 0x800,
+            }
+        );
+        assert_eq!(
+            buffers[1],
+            SRAMSwapBuffers {
+                buf1: 0x15400,
+                buf2: 0x20800,
+                size: 0x18000 - 0x15400,
+            }
+        );
     }
 
     #[test]
