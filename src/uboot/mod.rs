@@ -41,7 +41,7 @@ impl UbootImageType {
 
 impl fmt::Display for UbootImageType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let text = match *self {
+        let text = match self {
             UbootImageType::Firmware => "firmware",
             UbootImageType::Script => "script",
         };
