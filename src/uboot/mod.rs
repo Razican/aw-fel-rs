@@ -1,18 +1,18 @@
-use std::{fmt, thread};
 use std::time::Duration;
+use std::{fmt, thread};
 
-use byteorder::{LittleEndian, BigEndian, ByteOrder};
+use byteorder::{BigEndian, ByteOrder, LittleEndian};
+use failure::{Error, ResultExt};
 
 mod fel2spl_thunk;
 use self::fel2spl_thunk::*;
 
-use ::error::*;
-use super::{FelHandle, u32_as_u8, SPL_LEN_LIMIT};
+use super::{u32_as_u8, FelError, FelHandle, SPL_LEN_LIMIT};
 
 /// *U-boot* image name length.
 const UBOOT_IH_NMLEN: u32 = 32;
 /// *U-Boot* image magic number.
-const UBOOT_IH_MAGIC: u32 = 0x27051956;
+const UBOOT_IH_MAGIC: u32 = 0x2705_1956;
 /// ARM architechture constant in *U-Boot*.
 const UBOOT_IH_ARCH_ARM: u8 = 0x02;
 /// Offset of name field.
@@ -30,7 +30,7 @@ enum UbootImageType {
 }
 
 impl UbootImageType {
-    fn from_byte(byte: u8) -> Result<UbootImageType> {
+    fn from_byte(byte: u8) -> Result<Self, Error> {
         match byte {
             0x05 => Ok(UbootImageType::Firmware),
             0x06 => Ok(UbootImageType::Script),
@@ -53,7 +53,7 @@ impl<'h> FelHandle<'h> {
     /// This function tests a given buffer for a valid *U-Boot* image. Upon success, the image data
     /// gets transferred to the default memory address stored within the image header; and the
     /// function returns the *U-Boot* entry point (offset) and size values, in that order.
-    pub fn write_uboot_image(&self, uboot: &[u8]) -> Result<(u32, u32)> {
+    pub fn write_uboot_image(&self, uboot: &[u8]) -> Result<(u32, u32), Error> {
         if uboot.len() <= UBOOT_HEADER_SIZE as usize {
             bail!("insufficient U-boot size");
         }
@@ -66,9 +66,11 @@ impl<'h> FelHandle<'h> {
         let data_size = BigEndian::read_u32(&uboot[12..16]);
         let load_addr = BigEndian::read_u32(&uboot[16..20]);
         if data_size != uboot.len() as u32 - UBOOT_HEADER_SIZE {
-            bail!("U-Boot image data size mismatch: expected {:#010x}, got {:#010x}",
-                  uboot.len() as u32 - UBOOT_HEADER_SIZE,
-                  data_size);
+            bail!(
+                "U-Boot image data size mismatch: expected {:#010x}, got {:#010x}",
+                uboot.len() as u32 - UBOOT_HEADER_SIZE,
+                data_size
+            );
         }
         // TODO (from sunxi-fel): Verify image data integrity using the checksum field `ih_dcrc`,
         // available from `BigEndian::read_u32(&uboot[24..28])`.
@@ -79,45 +81,48 @@ impl<'h> FelHandle<'h> {
 
         // If we get here, we're "good to go" (i.e. actually write the data)
         self.fel_write(load_addr, &uboot[UBOOT_HEADER_SIZE as usize..])
-            .chain_err(|| "could not write the U-Boot image to the device")?;
+            .context("could not write the U-Boot image to the device")?;
 
         Ok((load_addr, data_size))
     }
 
     /// Writes *U-Boot* *SPL* into memory and executes it.
-    pub fn write_and_execute_spl(&self, spl: &[u8]) -> Result<()> {
+    pub fn write_and_execute_spl(&self, spl: &[u8]) -> Result<(), Error> {
         assert!(spl.len() >= 32, "SPL length must be bigger than 32 bytes");
 
-        let mut spl_checksum = 2 * LittleEndian::read_u32(&spl[12..16]) - 0x5F0A6C39;
+        let mut spl_checksum = 2 * LittleEndian::read_u32(&spl[12..16]) - 0x5F0A_6C39;
         let spl_len = LittleEndian::read_u32(&spl[16..20]);
 
         if spl_len > spl.len() as u32 || (spl_len % 4) != 0 {
-            return Err(Error::from_kind(ErrorKind::SPLHeader("bad length in the provided SPL \
-                                                              eGON header")));
+            return Err(FelError::SPLHeader {
+                msg: "bad length in the provided SPL eGON header",
+            }.into());
         }
 
         for i in spl.chunks(4) {
             spl_checksum = spl_checksum.wrapping_sub(LittleEndian::read_u32(i));
         }
         if spl_checksum != 0 {
-            return Err(Error::from_kind(ErrorKind::SPLHeader("the given SPL checksum does not \
-                                                              match")));
+            return Err(FelError::SPLHeader {
+                msg: "the given SPL checksum does not match",
+            }.into());
         }
 
         if self.soc_info.needs_l2en() {
             self.enable_l2_cache()
-                .chain_err(|| "the SoC requires L2 cache but it couldn't be enabled")?;
+                .context("the SoC requires L2 cache but it couldn't be enabled")?;
         }
 
-        let (sp_irq, sp) = self.get_stack_info()
-            .chain_err(|| "could not retrieve stack information")?;
+        let (_sp_irq, _sp) = self.get_stack_info()
+            .context("could not retrieve stack information")?;
 
         let tt = match self.backup_and_disable_mmu()
-            .chain_err(|| "could not backup and disable the MMU translation table")? {
+            .context("could not backup and disable the MMU translation table")?
+        {
             Some(tt) => Some(tt),
             None => {
                 if let Some(mmu_tt_addr) = self.soc_info.get_mmu_tt_addr() {
-                    if (mmu_tt_addr & 0x00003FFF) != 0 {
+                    if (mmu_tt_addr & 0x0000_3FFF) != 0 {
                         bail!("The MMU translation table address was not 16kB aligned");
                     }
 
@@ -128,9 +133,9 @@ impl<'h> FelHandle<'h> {
                     // descriptor translation table format is used, `TTBR0` is used for all the
                     // possible virtual addresses (`N=0`) and that the translation table must be
                     // aligned at a *16kB* boundary.
-                    self.set_dacr(0x55555555);
-                    self.set_ttbcr(0x00000000);
-                    self.set_ttbr0(mmu_tt_addr);
+                    self.set_dacr(0x5555_5555).context("could not set DACR")?;
+                    self.set_ttbcr(0x0000_0000).context("could not set TTBCR")?;
+                    self.set_ttbr0(mmu_tt_addr).context("could not set TTBR0")?;
 
                     Some(FelHandle::default_mmu_translation_table())
                 } else {
@@ -144,8 +149,9 @@ impl<'h> FelHandle<'h> {
         let mut written = 0;
         let mut left = spl.len();
         for swap_buffers in self.soc_info.get_swap_buffers() {
-            if swap_buffers.get_buf2() >= self.soc_info.get_spl_addr() &&
-               swap_buffers.get_buf2() < self.soc_info.get_spl_addr() + spl_len_limit {
+            if swap_buffers.get_buf2() >= self.soc_info.get_spl_addr()
+                && swap_buffers.get_buf2() < self.soc_info.get_spl_addr() + spl_len_limit
+            {
                 spl_len_limit = swap_buffers.get_buf2() - self.soc_info.get_spl_addr()
             }
             if left > 0 && cur_addr < swap_buffers.get_buf1() {
@@ -154,9 +160,11 @@ impl<'h> FelHandle<'h> {
                     tmp = left;
                 }
                 self.fel_write(cur_addr, &spl[written..tmp + written])
-                    .chain_err(|| {
-                        format!("could not write the file buffer to the current address ({:#010x})",
-                                cur_addr)
+                    .context({
+                        format!(
+                            "could not write the file buffer to the current address ({:#010x})",
+                            cur_addr
+                        )
                     })?;
                 cur_addr += tmp as u32;
                 written += tmp;
@@ -168,9 +176,11 @@ impl<'h> FelHandle<'h> {
                     tmp = left;
                 }
                 self.fel_write(swap_buffers.get_buf2(), &spl[written..tmp + written])
-                    .chain_err(|| {
-                        format!("could not write the file buffer to the second buffer ({:#010x})",
-                                cur_addr)
+                    .context({
+                        format!(
+                            "could not write the file buffer to the second buffer ({:#010x})",
+                            cur_addr
+                        )
                     })?;
                 cur_addr += tmp as u32;
                 written += tmp;
@@ -184,26 +194,32 @@ impl<'h> FelHandle<'h> {
         }
 
         if spl_len > spl_len_limit {
-            bail!("SPL too large, size limit is {} bytes, but it has {} bytes",
-                  spl_len_limit,
-                  spl_len);
+            bail!(
+                "SPL too large, size limit is {} bytes, but it has {} bytes",
+                spl_len_limit,
+                spl_len
+            );
         }
 
         // Write the remaining part of the SPL
         if left > 0 {
             self.fel_write(cur_addr, &spl[written..left + written])
-                .chain_err(|| {
-                    format!("could not write the file buffer to the current address ({:#010x})",
-                            cur_addr)
+                .context({
+                    format!(
+                        "could not write the file buffer to the current address ({:#010x})",
+                        cur_addr
+                    )
                 })?;
         }
 
-        let thunk_size = FEL_TO_SPL_THUNK.len() as u32 * 4 + 4 +
-                         (self.soc_info.get_swap_buffers().len() as u32 + 1) * 12;
+        let thunk_size = FEL_TO_SPL_THUNK.len() as u32 * 4 + 4
+            + (self.soc_info.get_swap_buffers().len() as u32 + 1) * 12;
         if thunk_size > self.soc_info.get_thunk_size() {
-            bail!("bad thunk size, need {} bytes, but only {} bytes available",
-                  thunk_size,
-                  self.soc_info.get_thunk_size());
+            bail!(
+                "bad thunk size, need {} bytes, but only {} bytes available",
+                thunk_size,
+                self.soc_info.get_thunk_size()
+            );
         }
 
         // Generate thunk buffer.
@@ -220,30 +236,32 @@ impl<'h> FelHandle<'h> {
                 *word = word.to_le();
             }
         }
-        thunk_buf.extend_from_slice(&[0u32; 3]); // Empty buffer size
+        thunk_buf.extend_from_slice(&[0_u32; 3]); // Empty buffer size
 
         // Execute SPL.
         self.fel_write(self.soc_info.get_thunk_addr(), u32_as_u8(&thunk_buf))
-            .chain_err(|| "could not write thunk buffer to memory")?;
+            .context("could not write thunk buffer to memory")?;
         self.fel_execute(self.soc_info.get_thunk_addr())
-            .chain_err(|| "could not execute SPL code in thunk address")?;
+            .context("could not execute SPL code in thunk address")?;
 
         // TODO Try to find and fix the bug, which needs this workaround
         thread::sleep(Duration::from_millis(250));
 
         // Read back the result and check if everything was fine
-        let mut signature = [0u8; 8];
+        let mut signature = [0_u8; 8];
         self.fel_read(self.soc_info.get_spl_addr() + 4, &mut signature)
-            .chain_err(|| "could not read SPL signature")?;
+            .context("could not read SPL signature")?;
         if &signature != b"eGON.FEL" {
-            bail!(format!("unable to validate SPL load. Expected 'eGON.FEL' signature. Failure \
-                           code: {}",
-                          String::from_utf8_lossy(&signature)));
+            bail!(format!(
+                "unable to validate SPL load. Expected 'eGON.FEL' signature. Failure code: {}",
+                String::from_utf8_lossy(&signature)
+            ));
         }
 
         // Re-enable the MMU if it was enabled by BROM
         if let Some(tt) = tt {
-            self.restore_and_enable_mmu(tt).chain_err(|| "unable to restore and enable MMU")?;
+            self.restore_and_enable_mmu(tt)
+                .context("unable to restore and enable MMU")?;
         }
         Ok(())
     }
@@ -251,9 +269,11 @@ impl<'h> FelHandle<'h> {
 
 /// Utility function to determine the image type from a mkimage-compatible header at given
 /// buffer.
-fn get_image_type(image: &[u8]) -> Result<UbootImageType> {
-    debug_assert!(image.len() > UBOOT_HEADER_SIZE as usize,
-                  "insuficient image length");
+fn get_image_type(image: &[u8]) -> Result<UbootImageType, Error> {
+    debug_assert!(
+        image.len() > UBOOT_HEADER_SIZE as usize,
+        "insuficient image length"
+    );
     if BigEndian::read_u32(&image[..4]) != UBOOT_IH_MAGIC {
         bail!("U-Boot signature mismatch");
     }
