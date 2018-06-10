@@ -41,3 +41,8 @@ script:
 after_success:
 - "./travis-helper.sh upload_code_coverage"
 - "./travis-helper.sh upload_documentation"
+
+notifications:
+  email:
+    on_success: change
+    on_failure: always
