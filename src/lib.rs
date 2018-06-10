@@ -9,14 +9,6 @@
     missing_debug_implementations, missing_copy_implementations
 )]
 #![cfg_attr(feature = "cargo-clippy", allow(similar_names, cast_possible_truncation))]
-// Allowing these for now.
-// #![cfg_attr(
-//     feature = "cargo-clippy",
-//     allow(
-//         stutter, similar_names, cast_possible_truncation, cast_possible_wrap, cast_precision_loss,
-//         cast_sign_loss
-//     )
-// )]
 
 #[macro_use]
 extern crate failure;
