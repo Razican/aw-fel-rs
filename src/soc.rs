@@ -484,8 +484,10 @@ impl Info {
 #[cfg(test)]
 mod tests {
     use super::SRAMSwapBuffers;
-    use super::{A10_A13_A20_SRAM_SWAP_BUFFERS, A31_SRAM_SWAP_BUFFERS, A64_SRAM_SWAP_BUFFERS,
-                A80_SRAM_SWAP_BUFFERS, AR100_ABUSING_SRAM_SWAP_BUFFERS, SOC_INFO_TABLE};
+    use super::{
+        A10_A13_A20_SRAM_SWAP_BUFFERS, A31_SRAM_SWAP_BUFFERS, A64_SRAM_SWAP_BUFFERS,
+        A80_SRAM_SWAP_BUFFERS, AR100_ABUSING_SRAM_SWAP_BUFFERS, SOC_INFO_TABLE,
+    };
 
     #[test]
     fn it_a10_a13_a20_sram_swap_buffers() {

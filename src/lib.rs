@@ -4,11 +4,22 @@
 #![forbid(anonymous_parameters)]
 #![cfg_attr(feature = "cargo-clippy", warn(clippy_pedantic))]
 #![deny(
-    variant_size_differences, unused_results, unused_qualifications, unused_import_braces,
-    unsafe_code, trivial_numeric_casts, trivial_casts, missing_docs, unused_extern_crates,
-    missing_debug_implementations, missing_copy_implementations
+    variant_size_differences,
+    unused_results,
+    unused_qualifications,
+    unused_import_braces,
+    unsafe_code,
+    trivial_numeric_casts,
+    trivial_casts,
+    missing_docs,
+    unused_extern_crates,
+    missing_debug_implementations,
+    missing_copy_implementations
 )]
-#![cfg_attr(feature = "cargo-clippy", allow(similar_names, cast_possible_truncation))]
+#![cfg_attr(
+    feature = "cargo-clippy",
+    allow(similar_names, cast_possible_truncation)
+)]
 
 #[macro_use]
 extern crate failure;
@@ -33,7 +44,11 @@ mod uboot;
 #[derive(Debug, Fail, PartialEq)]
 pub enum FelError {
     /// USB response error.
-    #[fail(display = "invalid response: expected '{}', found: {}", expected, found)]
+    #[fail(
+        display = "invalid response: expected '{}', found: {}",
+        expected,
+        found
+    )]
     Response {
         /// Expected string.
         expected: &'static str,
@@ -321,7 +336,9 @@ impl<'h> FelHandle<'h> {
 
     // Restore and enable MMU.
     fn restore_and_enable_mmu(&self, mut tt: [u32; 4 * 1024]) -> Result<(), Error> {
-        let ttbr0 = self.get_ttbr0().context("unable to read `TBBR0` register")?;
+        let ttbr0 = self
+            .get_ttbr0()
+            .context("unable to read `TBBR0` register")?;
 
         // Setting write-combine mapping for *DRAM*.
         let start = (DRAM_BASE >> 20) as usize;
@@ -438,8 +455,14 @@ impl<'h> FelHandle<'h> {
         cr_m: u32,
         opc2: u32,
     ) -> Result<u32, Error> {
-        let opcode = 0xEE00_0000 | (1 << 20) | (1 << 4) | ((opc1 & 7) << 21) | ((cr_n & 15) << 16)
-            | ((coproc & 15) << 8) | ((opc2 & 7) << 5) | (cr_m & 15);
+        let opcode = 0xEE00_0000
+            | (1 << 20)
+            | (1 << 4)
+            | ((opc1 & 7) << 21)
+            | ((cr_n & 15) << 16)
+            | ((coproc & 15) << 8)
+            | ((opc2 & 7) << 5)
+            | (cr_m & 15);
         let arm_code: [u32; 3] = [
             // mrc  coproc, opc1, r0, cr_n, cr_m, opc2
             opcode.to_le(),
@@ -468,8 +491,13 @@ impl<'h> FelHandle<'h> {
         opc2: u32,
         val: u32,
     ) -> Result<(), Error> {
-        let opcode = 0xEE00_0000 | (1 << 4) | ((opc1 & 7) << 21) | ((cr_n & 15) << 16)
-            | ((coproc & 15) << 8) | ((opc2 & 7) << 5) | (cr_m & 15);
+        let opcode = 0xEE00_0000
+            | (1 << 4)
+            | ((opc1 & 7) << 21)
+            | ((cr_n & 15) << 16)
+            | ((coproc & 15) << 8)
+            | ((opc2 & 7) << 5)
+            | (cr_m & 15);
         let arm_code: [u32; 6] = [
             // ldr  r0, [pc, #12]
             0x_e5_9f_00_0c_u32.to_le(),
@@ -816,7 +844,8 @@ impl<'h> UsbHandle<'h> {
         self.send_fel_request(AW_FEL_1_READ, offset, buf.len() as u32)
             .context("unable to send AW_FEL_1_READ FEL request")?;
         self.usb_read(buf).context("unable read data from USB")?;
-        self.read_fel_status().context("unable to read FEL status")?;
+        self.read_fel_status()
+            .context("unable to read FEL status")?;
         Ok(())
     }
 
@@ -836,7 +865,8 @@ impl<'h> UsbHandle<'h> {
         self.send_fel_request(AW_FEL_1_WRITE, offset, buf.len() as u32)
             .context("unable to send AW_FEL_1_WRITER FEL request")?;
         self.usb_write(buf).context("unable write data to USB")?;
-        self.read_fel_status().context("unable to read FEL status")?;
+        self.read_fel_status()
+            .context("unable to read FEL status")?;
         Ok(())
     }
 
@@ -844,7 +874,8 @@ impl<'h> UsbHandle<'h> {
     pub fn fel_execute(&self, offset: u32) -> Result<(), Error> {
         self.send_fel_request(AW_FEL_1_EXEC, offset, 0)
             .context("unable to send AW_FEL_1_EXEC FEL request")?;
-        self.read_fel_status().context("unable to read FEL status")?;
+        self.read_fel_status()
+            .context("unable to read FEL status")?;
         Ok(())
     }
 
@@ -855,7 +886,8 @@ impl<'h> UsbHandle<'h> {
         let mut buf = [0_u8; 32];
         self.usb_read(&mut buf)
             .context("unable to read version from USB")?;
-        self.read_fel_status().context("unable to read FEL status")?;
+        self.read_fel_status()
+            .context("unable to read FEL status")?;
 
         Ok(soc::Version::from_bytes(buf))
     }
@@ -1002,8 +1034,7 @@ impl<'h> Drop for UsbHandle<'h> {
                         e,
                         e.description()
                     ).as_bytes(),
-                )
-                .unwrap();
+                ).unwrap();
         }
         if cfg!(target_os = "linux") && self.iface_detached {
             if let Err(e) = self.device_handle.attach_kernel_driver(0) {
@@ -1014,8 +1045,7 @@ impl<'h> Drop for UsbHandle<'h> {
                             e,
                             e.description()
                         ).as_bytes(),
-                    )
-                    .unwrap();
+                    ).unwrap();
             }
         }
     }
@@ -1042,7 +1072,8 @@ impl Fel {
 
     /// Get the device from the given bus and address, if it exists and is a FEL device.
     pub fn get_device(&self, bus: u8, address: u8) -> Result<Option<FelHandle>, Error> {
-        for device in self.context
+        for device in self
+            .context
             .devices()
             .context("unable to list USB devices")?
             .iter()
@@ -1078,7 +1109,8 @@ impl Fel {
     /// Creates a list of Allwinner devices in Fel mode.
     pub fn list_devices(&self) -> Result<Vec<FelHandle>, Error> {
         let mut result = Vec::new();
-        for device in self.context
+        for device in self
+            .context
             .devices()
             .context("unable to list USB devices")?
             .iter()
