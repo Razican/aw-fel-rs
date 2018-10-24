@@ -113,10 +113,12 @@ impl<'h> FelHandle<'h> {
                 .context("the SoC requires L2 cache but it couldn't be enabled")?;
         }
 
-        let (_sp_irq, _sp) = self.get_stack_info()
+        let (_sp_irq, _sp) = self
+            .get_stack_info()
             .context("could not retrieve stack information")?;
 
-        let tt = match self.backup_and_disable_mmu()
+        let tt = match self
+            .backup_and_disable_mmu()
             .context("could not backup and disable the MMU translation table")?
         {
             Some(tt) => Some(tt),
@@ -212,7 +214,8 @@ impl<'h> FelHandle<'h> {
                 })?;
         }
 
-        let thunk_size = FEL_TO_SPL_THUNK.len() as u32 * 4 + 4
+        let thunk_size = FEL_TO_SPL_THUNK.len() as u32 * 4
+            + 4
             + (self.soc_info.get_swap_buffers().len() as u32 + 1) * 12;
         if thunk_size > self.soc_info.get_thunk_size() {
             bail!(
