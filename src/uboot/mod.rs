@@ -2,7 +2,7 @@ use std::time::Duration;
 use std::{fmt, thread};
 
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
-use failure::{Error, ResultExt};
+use failure::{bail, Error, ResultExt};
 
 mod fel2spl_thunk;
 use self::fel2spl_thunk::*;
@@ -13,7 +13,7 @@ use super::{u32_as_u8, FelError, FelHandle, SPL_LEN_LIMIT};
 const UBOOT_IH_NMLEN: u32 = 32;
 /// *U-Boot* image magic number.
 const UBOOT_IH_MAGIC: u32 = 0x2705_1956;
-/// ARM architechture constant in *U-Boot*.
+/// ARM architecture constant in *U-Boot*.
 const UBOOT_IH_ARCH_ARM: u8 = 0x02;
 /// Offset of name field.
 const UBOOT_HEADER_NAME_OFFSET: u32 = 32;
@@ -96,7 +96,8 @@ impl<'h> FelHandle<'h> {
         if spl_len > spl.len() as u32 || (spl_len % 4) != 0 {
             return Err(FelError::SPLHeader {
                 msg: "bad length in the provided SPL eGON header",
-            }.into());
+            }
+            .into());
         }
 
         for i in spl.chunks(4) {
@@ -105,7 +106,8 @@ impl<'h> FelHandle<'h> {
         if spl_checksum != 0 {
             return Err(FelError::SPLHeader {
                 msg: "the given SPL checksum does not match",
-            }.into());
+            }
+            .into());
         }
 
         if self.soc_info.needs_l2en() {
@@ -275,13 +277,13 @@ impl<'h> FelHandle<'h> {
 fn get_image_type(image: &[u8]) -> Result<UbootImageType, Error> {
     debug_assert!(
         image.len() > UBOOT_HEADER_SIZE as usize,
-        "insuficient image length"
+        "insufficient image length"
     );
     if BigEndian::read_u32(&image[..4]) != UBOOT_IH_MAGIC {
         bail!("U-Boot signature mismatch");
     }
     if image[29] != UBOOT_IH_ARCH_ARM {
-        bail!("invalid architechture in U-Boot header, only ARM is supported");
+        bail!("invalid architecture in U-Boot header, only ARM is supported");
     }
     UbootImageType::from_byte(image[30])
 }

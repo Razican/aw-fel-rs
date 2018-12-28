@@ -1,9 +1,9 @@
 //! Allwinner FEL library.
 
-#![cfg_attr(feature = "cargo-clippy", deny(clippy))]
 #![forbid(anonymous_parameters)]
-#![cfg_attr(feature = "cargo-clippy", warn(clippy_pedantic))]
+#![warn(clippy::pedantic)]
 #![deny(
+    clippy::all,
     variant_size_differences,
     unused_results,
     unused_qualifications,
@@ -16,25 +16,14 @@
     missing_debug_implementations,
     missing_copy_implementations
 )]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(similar_names, cast_possible_truncation)
-)]
+#![allow(clippy::similar_names, clippy::cast_possible_truncation)]
 
-#[macro_use]
-extern crate failure;
-extern crate byteorder;
-extern crate libusb;
-
-use std::io;
-use std::ops::Deref;
-use std::time::Duration;
-use std::{fmt, u32};
+use std::{fmt, io, ops::Deref, time::Duration, u32};
 
 use libusb::DeviceHandle;
 
 use byteorder::{ByteOrder, LittleEndian};
-use failure::{Error, Fail, ResultExt};
+use failure::{bail, Error, Fail, ResultExt};
 
 mod soc;
 #[cfg(feature = "uboot")]
@@ -46,8 +35,7 @@ pub enum FelError {
     /// USB response error.
     #[fail(
         display = "invalid response: expected '{}', found: {}",
-        expected,
-        found
+        expected, found
     )]
     Response {
         /// Expected string.
@@ -399,9 +387,9 @@ impl<'h> FelHandle<'h> {
         ];
 
         self.fel_write(self.soc_info.get_scratch_addr(), u32_as_u8(&arm_code))
-            .context("could not write MMU enablement code to device memory")?;
+            .context("could not write MMU enabling code to device memory")?;
         self.fel_execute(self.soc_info.get_scratch_addr())
-            .context("could not execute the MMU enablement code")?;
+            .context("could not execute the MMU enabling code")?;
         Ok(())
     }
 
@@ -609,7 +597,8 @@ impl<'h> FelHandle<'h> {
         self.fel_read(
             self.soc_info.get_scratch_addr() + LCODE_ARM_RW_SIZE as u32,
             u32_as_u8_mut(words),
-        ).context("unable to read generated buffer")?;
+        )
+        .context("unable to read generated buffer")?;
 
         if cfg!(not(target_endian = "little")) {
             for word in words.iter_mut() {
@@ -965,7 +954,8 @@ impl<'h> UsbHandle<'h> {
             Err(FelError::Response {
                 expected: "AWUS[...]",
                 found: format!("{}[...]", String::from_utf8_lossy(&buf[..4])),
-            }.into())
+            }
+            .into())
         }
     }
 
@@ -1033,8 +1023,10 @@ impl<'h> Drop for UsbHandle<'h> {
                         "error releasing device handle interface: {:?} ({})",
                         e,
                         e.description()
-                    ).as_bytes(),
-                ).unwrap();
+                    )
+                    .as_bytes(),
+                )
+                .unwrap();
         }
         if cfg!(target_os = "linux") && self.iface_detached {
             if let Err(e) = self.device_handle.attach_kernel_driver(0) {
@@ -1044,8 +1036,10 @@ impl<'h> Drop for UsbHandle<'h> {
                             "error attaching kernel driver: {:?} ({})",
                             e,
                             e.description()
-                        ).as_bytes(),
-                    ).unwrap();
+                        )
+                        .as_bytes(),
+                    )
+                    .unwrap();
             }
         }
     }
@@ -1064,7 +1058,7 @@ impl fmt::Debug for Fel {
 
 impl Fel {
     /// Creates a new Fel object.
-    pub fn new() -> Result<Self, Error> {
+    pub fn initialize() -> Result<Self, Error> {
         Ok(Self {
             context: libusb::Context::new().context("unable to create libUSB context")?,
         })
@@ -1096,7 +1090,8 @@ impl Fel {
                     } else {
                         Err(FelError::UnsupportedDevId {
                             id: soc_version.get_id(),
-                        }.into())
+                        }
+                        .into())
                     };
                 } else {
                     return Ok(None);
@@ -1132,7 +1127,8 @@ impl Fel {
                 } else {
                     return Err(FelError::UnsupportedDevId {
                         id: soc_version.get_id(),
-                    }.into());
+                    }
+                    .into());
                 }
             }
         }

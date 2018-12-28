@@ -409,7 +409,7 @@ impl Info {
         None
     }
 
-    /// Gets the SoC information structure from the givern `SoCVersion`, if supported.
+    /// Gets the SoC information structure from the given `SoCVersion`, if supported.
     #[doc(hidden)]
     pub fn from_version(version: &Version) -> Option<Self> {
         Self::from_id(version.soc_id)
