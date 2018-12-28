@@ -13,6 +13,13 @@ Library for dealing with Allwinner devices in FEL mode, in pure Rust.
 keywords = ["arm", "sunxi", "allwinner", "fel"]
 categories = ["embedded"]
 
+[badges]
+travis-ci = { repository = "Razican/aw-fel-rs", branch = "master" }
+appveyor = { repository = "Razican/aw-fel-rs", branch = "master", service = "github" }
+codecov = { repository = "Razican/aw-fel-rs", branch = "master", service = "github" }
+is-it-maintained-issue-resolution = { repository = "Razican/aw-fel-rs" }
+is-it-maintained-open-issues = { repository = "Razican/aw-fel-rs" }
+
 [dependencies]
 failure = "0.1.3"
 libusb = "0.3.0"

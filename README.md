@@ -1,6 +1,6 @@
 # Allwinner FEL Rust library
 
-[![Build Status][build_svg][build_status]
+[![Build Status][build_svg]][build_status]
 [![codecov][coverage_svg]][coverage_status]
 [![Crates.io][crate_svg]][crate_link]
 
