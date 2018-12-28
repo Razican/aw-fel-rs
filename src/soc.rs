@@ -615,6 +615,7 @@ mod tests {
         );
     }
 
+    #[allow(clippy::cyclomatic_complexity)]
     #[test]
     fn it_soc_info() {
         for soc_info in &SOC_INFO_TABLE {
@@ -622,7 +623,7 @@ mod tests {
                 0x1623 => {
                     // Allwinner A10
                     assert_eq!(soc_info.name, "A10");
-                    assert_eq!(soc_info.spl_addr, 0x00000000);
+                    assert_eq!(soc_info.spl_addr, 0x0000_0000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert!(soc_info.mmu_tt_addr.is_none());
@@ -630,52 +631,52 @@ mod tests {
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &A10_A13_A20_SRAM_SWAP_BUFFERS);
                     assert!(soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01C23800));
+                    assert_eq!(soc_info.sid_addr, Some(0x01C2_3800));
                     assert!(soc_info.rvbar_reg.is_none());
                 }
                 0x1625 => {
                     // Allwinner A10s, A13, R8
                     assert_eq!(soc_info.name, "A10s/A13/R8");
-                    assert_eq!(soc_info.spl_addr, 0x00000000);
+                    assert_eq!(soc_info.spl_addr, 0x0000_0000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0xA200);
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &A10_A13_A20_SRAM_SWAP_BUFFERS);
                     assert!(soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01C23800));
+                    assert_eq!(soc_info.sid_addr, Some(0x01C2_3800));
                     assert!(soc_info.rvbar_reg.is_none());
                 }
                 0x1651 => {
                     // Allwinner A20
                     assert_eq!(soc_info.name, "A20");
-                    assert_eq!(soc_info.spl_addr, 0x00000000);
+                    assert_eq!(soc_info.spl_addr, 0x0000_0000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0xA200);
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &A10_A13_A20_SRAM_SWAP_BUFFERS);
                     assert!(!soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01C23800));
+                    assert_eq!(soc_info.sid_addr, Some(0x01C2_3800));
                     assert!(soc_info.rvbar_reg.is_none());
                 }
                 0x1650 => {
                     // Allwinner A23
                     assert_eq!(soc_info.name, "A23");
-                    assert_eq!(soc_info.spl_addr, 0x00000000);
+                    assert_eq!(soc_info.spl_addr, 0x0000_0000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x46E00);
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &AR100_ABUSING_SRAM_SWAP_BUFFERS);
                     assert!(!soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01C23800));
+                    assert_eq!(soc_info.sid_addr, Some(0x01C2_3800));
                     assert!(soc_info.rvbar_reg.is_none());
                 }
                 0x1633 => {
                     // Allwinner A31
                     assert_eq!(soc_info.name, "A31");
-                    assert_eq!(soc_info.spl_addr, 0x00000000);
+                    assert_eq!(soc_info.spl_addr, 0x0000_0000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x22E00);
@@ -688,14 +689,14 @@ mod tests {
                 0x1667 => {
                     // Allwinner A33, R16
                     assert_eq!(soc_info.name, "A33/R16");
-                    assert_eq!(soc_info.spl_addr, 0x00000000);
+                    assert_eq!(soc_info.spl_addr, 0x0000_0000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x46E00);
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &AR100_ABUSING_SRAM_SWAP_BUFFERS);
                     assert!(!soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01C23800));
+                    assert_eq!(soc_info.sid_addr, Some(0x01C2_3800));
                     assert!(soc_info.rvbar_reg.is_none());
                 }
                 0x1689 => {
@@ -708,8 +709,8 @@ mod tests {
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &A64_SRAM_SWAP_BUFFERS);
                     assert!(!soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01C14200));
-                    assert_eq!(soc_info.rvbar_reg, Some(0x017000A0));
+                    assert_eq!(soc_info.sid_addr, Some(0x01C1_4200));
+                    assert_eq!(soc_info.rvbar_reg, Some(0x0170_00A0));
                 }
                 0x1639 => {
                     // Allwinner A80
@@ -721,33 +722,33 @@ mod tests {
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &A80_SRAM_SWAP_BUFFERS);
                     assert!(!soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01c0e200));
+                    assert_eq!(soc_info.sid_addr, Some(0x01c0_e200));
                     assert!(soc_info.rvbar_reg.is_none());
                 }
                 0x1673 => {
                     // Allwinner A83T
                     assert_eq!(soc_info.name, "A83T");
-                    assert_eq!(soc_info.spl_addr, 0x00000000);
+                    assert_eq!(soc_info.spl_addr, 0x0000_0000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0x46E00);
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &AR100_ABUSING_SRAM_SWAP_BUFFERS);
                     assert!(!soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01C14200));
+                    assert_eq!(soc_info.sid_addr, Some(0x01C1_4200));
                     assert!(soc_info.rvbar_reg.is_none());
                 }
                 0x1680 => {
                     // Allwinner H3, H2+
                     assert_eq!(soc_info.name, "H3/H2+");
-                    assert_eq!(soc_info.spl_addr, 0x00000000);
+                    assert_eq!(soc_info.spl_addr, 0x0000_0000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert_eq!(soc_info.mmu_tt_addr, Some(0x8000));
                     assert_eq!(soc_info.thunk_addr, 0xA200);
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &A10_A13_A20_SRAM_SWAP_BUFFERS);
                     assert!(!soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01C14200));
+                    assert_eq!(soc_info.sid_addr, Some(0x01C1_4200));
                     assert!(soc_info.rvbar_reg.is_none());
                 }
                 0x1718 => {
@@ -760,20 +761,20 @@ mod tests {
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &A64_SRAM_SWAP_BUFFERS);
                     assert!(!soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01C14200));
-                    assert_eq!(soc_info.rvbar_reg, Some(0x017000A0));
+                    assert_eq!(soc_info.sid_addr, Some(0x01C1_4200));
+                    assert_eq!(soc_info.rvbar_reg, Some(0x0170_00A0));
                 }
                 0x1701 => {
                     // Allwinner R40
                     assert_eq!(soc_info.name, "R40");
-                    assert_eq!(soc_info.spl_addr, 0x00000000);
+                    assert_eq!(soc_info.spl_addr, 0x0000_0000);
                     assert_eq!(soc_info.scratch_addr, 0x1000);
                     assert!(soc_info.mmu_tt_addr.is_none());
                     assert_eq!(soc_info.thunk_addr, 0xA200);
                     assert_eq!(soc_info.thunk_size, 0x200);
                     assert_eq!(soc_info.swap_buffers, &A10_A13_A20_SRAM_SWAP_BUFFERS);
                     assert!(!soc_info.needs_l2en);
-                    assert_eq!(soc_info.sid_addr, Some(0x01C1B200));
+                    assert_eq!(soc_info.sid_addr, Some(0x01C1_B200));
                     assert!(soc_info.rvbar_reg.is_none());
                 }
                 _ => unreachable!(),
