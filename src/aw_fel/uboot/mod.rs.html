@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/uboot/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/uboot/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -285,12 +285,14 @@
 <span id="285">285</span>
 <span id="286">286</span>
 <span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fmt</span>, <span class="ident">thread</span>};
 
 <span class="kw">use</span> <span class="ident">byteorder</span>::{<span class="ident">BigEndian</span>, <span class="ident">ByteOrder</span>, <span class="ident">LittleEndian</span>};
-<span class="kw">use</span> <span class="ident">failure</span>::{<span class="ident">Error</span>, <span class="ident">ResultExt</span>};
+<span class="kw">use</span> <span class="ident">failure</span>::{<span class="ident">bail</span>, <span class="ident">Error</span>, <span class="ident">ResultExt</span>};
 
 <span class="kw">mod</span> <span class="ident">fel2spl_thunk</span>;
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">fel2spl_thunk</span>::<span class="kw-2">*</span>;
@@ -301,7 +303,7 @@
 <span class="kw">const</span> <span class="ident">UBOOT_IH_NMLEN</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">32</span>;
 <span class="doccomment">/// *U-Boot* image magic number.</span>
 <span class="kw">const</span> <span class="ident">UBOOT_IH_MAGIC</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0x2705_1956</span>;
-<span class="doccomment">/// ARM architechture constant in *U-Boot*.</span>
+<span class="doccomment">/// ARM architecture constant in *U-Boot*.</span>
 <span class="kw">const</span> <span class="ident">UBOOT_IH_ARCH_ARM</span>: <span class="ident">u8</span> <span class="op">=</span> <span class="number">0x02</span>;
 <span class="doccomment">/// Offset of name field.</span>
 <span class="kw">const</span> <span class="ident">UBOOT_HEADER_NAME_OFFSET</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">32</span>;
@@ -384,7 +386,8 @@
         <span class="kw">if</span> <span class="ident">spl_len</span> <span class="op">&gt;</span> <span class="ident">spl</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span> <span class="op">||</span> (<span class="ident">spl_len</span> <span class="op">%</span> <span class="number">4</span>) <span class="op">!=</span> <span class="number">0</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">FelError</span>::<span class="ident">SPLHeader</span> {
                 <span class="ident">msg</span>: <span class="string">&quot;bad length in the provided SPL eGON header&quot;</span>,
-            }.<span class="ident">into</span>());
+            }
+            .<span class="ident">into</span>());
         }
 
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="ident">spl</span>.<span class="ident">chunks</span>(<span class="number">4</span>) {
@@ -393,7 +396,8 @@
         <span class="kw">if</span> <span class="ident">spl_checksum</span> <span class="op">!=</span> <span class="number">0</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">FelError</span>::<span class="ident">SPLHeader</span> {
                 <span class="ident">msg</span>: <span class="string">&quot;the given SPL checksum does not match&quot;</span>,
-            }.<span class="ident">into</span>());
+            }
+            .<span class="ident">into</span>());
         }
 
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">soc_info</span>.<span class="ident">needs_l2en</span>() {
@@ -563,13 +567,13 @@
 <span class="kw">fn</span> <span class="ident">get_image_type</span>(<span class="ident">image</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UbootImageType</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
     <span class="macro">debug_assert</span><span class="macro">!</span>(
         <span class="ident">image</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">UBOOT_HEADER_SIZE</span> <span class="kw">as</span> <span class="ident">usize</span>,
-        <span class="string">&quot;insuficient image length&quot;</span>
+        <span class="string">&quot;insufficient image length&quot;</span>
     );
     <span class="kw">if</span> <span class="ident">BigEndian</span>::<span class="ident">read_u32</span>(<span class="kw-2">&amp;</span><span class="ident">image</span>[..<span class="number">4</span>]) <span class="op">!=</span> <span class="ident">UBOOT_IH_MAGIC</span> {
         <span class="macro">bail</span><span class="macro">!</span>(<span class="string">&quot;U-Boot signature mismatch&quot;</span>);
     }
     <span class="kw">if</span> <span class="ident">image</span>[<span class="number">29</span>] <span class="op">!=</span> <span class="ident">UBOOT_IH_ARCH_ARM</span> {
-        <span class="macro">bail</span><span class="macro">!</span>(<span class="string">&quot;invalid architechture in U-Boot header, only ARM is supported&quot;</span>);
+        <span class="macro">bail</span><span class="macro">!</span>(<span class="string">&quot;invalid architecture in U-Boot header, only ARM is supported&quot;</span>);
     }
     <span class="ident">UbootImageType</span>::<span class="ident">from_byte</span>(<span class="ident">image</span>[<span class="number">30</span>])
 }
