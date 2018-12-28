@@ -1,6 +1,6 @@
 [package]
 name = "aw-fel"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Razican <razican@protonmail.ch>"]
 edition = "2018"
 license = "MIT/Apache-2.0"
@@ -15,10 +15,10 @@ categories = ["embedded"]
 
 [badges]
 travis-ci = { repository = "Razican/aw-fel-rs", branch = "master" }
-appveyor = { repository = "Razican/aw-fel-rs", branch = "master", service = "github" }
 codecov = { repository = "Razican/aw-fel-rs", branch = "master", service = "github" }
 is-it-maintained-issue-resolution = { repository = "Razican/aw-fel-rs" }
 is-it-maintained-open-issues = { repository = "Razican/aw-fel-rs" }
+maintenance = { status = "passively-maintained" }
 
 [dependencies]
 failure = "0.1.3"
