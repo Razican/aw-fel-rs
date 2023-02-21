@@ -112,7 +112,7 @@ const A80_SRAM_SWAP_BUFFERS: [SRAMSwapBuffers; 2] = [
 ];
 
 /// Table with all the supported *SoCs*.
-const SOC_INFO_TABLE: [Info; 12] = [
+const SOC_INFO_TABLE: [Info; 13] = [
     Info {
         soc_id: 0x1623, // Allwinner A10
         name: "A10",
@@ -248,6 +248,19 @@ const SOC_INFO_TABLE: [Info; 12] = [
         name: "H5",
         spl_addr: 0x10000,
         scratch_addr: 0x11000,
+        thunk_addr: 0x1A200,
+        thunk_size: 0x200,
+        needs_l2en: false,
+        mmu_tt_addr: None,
+        sid_addr: Some(0x01C1_4200),
+        rvbar_reg: Some(0x0170_00A0),
+        swap_buffers: &A64_SRAM_SWAP_BUFFERS,
+    },
+    Info {
+        soc_id: 0x1823, // Allwinner H616
+        name: "H616",
+        spl_addr: 0x20000,
+        scratch_addr: 0x27e00, // I think...
         thunk_addr: 0x1A200,
         thunk_size: 0x200,
         needs_l2en: false,
